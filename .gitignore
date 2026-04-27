@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+.env
+.env.local
+.DS_Store
+*.jks
+*.pem
+*.log
+build/
+dist/
+.expo-shared/
+.vscode/
+.idea/
+*.swp
+*.swo

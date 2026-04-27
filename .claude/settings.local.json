@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git init *)",
+      "Bash(npm init *)",
+      "Bash(npx create-expo-app@latest . --template)",
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit *)"
+    ]
+  }
+}
