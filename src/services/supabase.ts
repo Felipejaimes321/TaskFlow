@@ -41,11 +41,8 @@ if (Platform.OS !== 'web') {
   }
 }
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase credentials in environment variables');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+// Para evitar que la app crashee en la pantalla en blanco en Vercel
+export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseKey || 'placeholder', {
   auth: {
     storage,
     autoRefreshToken: true,
