@@ -102,7 +102,10 @@ export default function AuthScreen() {
         await signIn(email, password);
       }
     } catch (error: any) {
-      const raw = error?.message || '';
+      const raw = error?.message || JSON.stringify(error) || 'Error desconocido';
+      if (Platform.OS === 'web') {
+        window.alert('ERROR DE SUPABASE: ' + raw);
+      }
       if (raw.includes('Invalid login') || raw.includes('invalid_credentials')) setErrorMsg('Correo o contraseña incorrectos.');
       else if (raw.includes('already registered')) setErrorMsg('Este correo ya tiene una cuenta. Inicia sesión.');
       else if (raw.includes('Email not confirmed')) setErrorMsg('Confirma tu correo antes de iniciar sesión.');
@@ -190,6 +193,10 @@ export default function AuthScreen() {
               </Text>
             </Text>
           </TouchableOpacity>
+
+          <Text style={{ fontSize: 10, color: colors.textTertiary, textAlign: 'center', marginTop: 40 }}>
+            Diagnóstico DB: {process.env.EXPO_PUBLIC_SUPABASE_URL ? 'OK' : 'MISSING'}
+          </Text>
 
         </Animated.View>
       </ScrollView>
