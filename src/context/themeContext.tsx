@@ -1,193 +1,174 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useColorScheme, Platform } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const THEME_KEY = 'taskflow_theme';
+export type ThemeType = 'light' | 'dark';
 
-// ─── Color Palettes ──────────────────────────────────────────────────────────
+export interface ThemeColors {
+  background: string;
+  surface: string;
+  surfaceAlt: string;
+  text: string;
+  textSecondary: string;
+  textTertiary: string;
+  placeholder: string;
+  primary: string;
+  primaryLight: string;
+  primaryBorder: string;
+  secondary: string;
+  success: string;
+  successBg: string;
+  warning: string;
+  warningBg: string;
+  error: string;
+  errorBg: string;
+  border: string;
+  borderSubtle: string;
+  tabBar: string;
+  tabBarBorder: string;
+  icon: string;
+  priorityHigh: string;
+  priorityHighBg: string;
+  priorityHighBorder: string;
+  priorityMed: string;
+  priorityMedBg: string;
+  priorityMedBorder: string;
+  priorityLow: string;
+  priorityLowBg: string;
+  priorityLowBorder: string;
+}
 
-export const darkColors = {
-  // Backgrounds
-  background:    '#0A0A1A',
-  surface:       '#12122A',
-  surfaceAlt:    '#1C1C35',
-  surfaceHover:  '#16163A',
-  // Primary
-  primary:       '#6366F1',
-  primaryLight:  'rgba(99,102,241,0.15)',
-  primaryBorder: 'rgba(99,102,241,0.25)',
-  // Text
-  text:          '#F9FAFB',
-  textSecondary: '#9CA3AF',
-  textTertiary:  '#4B5563',
-  // Borders
-  border:        'rgba(99,102,241,0.18)',
-  borderSubtle:  'rgba(99,102,241,0.08)',
-  // Semantic
-  error:         '#EF4444',
-  errorBg:       'rgba(239,68,68,0.12)',
-  errorBorder:   'rgba(239,68,68,0.3)',
-  success:       '#10B981',
-  successBg:     'rgba(16,185,129,0.12)',
-  successBorder: 'rgba(16,185,129,0.3)',
-  warning:       '#F59E0B',
-  warningBg:     'rgba(245,158,11,0.12)',
-  warningBorder: 'rgba(245,158,11,0.3)',
-  // Priority
-  priorityHigh:       '#EF4444',
-  priorityHighBg:     'rgba(239,68,68,0.12)',
-  priorityHighBorder: 'rgba(239,68,68,0.3)',
-  priorityMed:        '#F59E0B',
-  priorityMedBg:      'rgba(245,158,11,0.12)',
-  priorityMedBorder:  'rgba(245,158,11,0.3)',
-  priorityLow:        '#10B981',
-  priorityLowBg:      'rgba(16,185,129,0.12)',
-  priorityLowBorder:  'rgba(16,185,129,0.3)',
-  // Navigation
-  tabBar:        '#10101E',
-  tabBarBorder:  'rgba(99,102,241,0.15)',
-  // Input
-  inputBg:       '#1C1C35',
-  placeholder:   '#4B5563',
-  // Icon
-  icon:          '#9CA3AF',
-  iconActive:    '#6366F1',
-  // Shadow
-  shadow:        '#000000',
-  isDark: true,
+const lightColors: ThemeColors = {
+  background: '#FFFFFF',
+  surface: '#F9F9F9',
+  surfaceAlt: '#F0F0F0',
+  text: '#000000',
+  textSecondary: '#666666',
+  textTertiary: '#999999',
+  placeholder: '#CCCCCC',
+  primary: '#007AFF',
+  primaryLight: '#E8F4FF',
+  primaryBorder: '#B3D9FF',
+  secondary: '#5AC8FA',
+  success: '#34C759',
+  successBg: '#E8F5E9',
+  warning: '#FF9500',
+  warningBg: '#FFF3CD',
+  error: '#FF3B30',
+  errorBg: '#FFEBEE',
+  border: '#E0E0E0',
+  borderSubtle: '#F0F0F0',
+  tabBar: '#FFFFFF',
+  tabBarBorder: '#E0E0E0',
+  icon: '#999999',
+  priorityHigh: '#FF3B30',
+  priorityHighBg: '#FFEBEE',
+  priorityHighBorder: '#FFCDD2',
+  priorityMed: '#FF9500',
+  priorityMedBg: '#FFF3E0',
+  priorityMedBorder: '#FFE0B2',
+  priorityLow: '#34C759',
+  priorityLowBg: '#E8F5E9',
+  priorityLowBorder: '#C8E6C9',
 };
 
-export const lightColors = {
-  // Backgrounds
-  background:    '#F5F5F7',
-  surface:       '#FFFFFF',
-  surfaceAlt:    '#F2F2F7',
-  surfaceHover:  '#E5E5EA',
-  // Primary
-  primary:       '#5856D6',
-  primaryLight:  'rgba(88,86,214,0.1)',
-  primaryBorder: 'rgba(88,86,214,0.25)',
-  // Text
-  text:          '#1C1C1E',
-  textSecondary: '#6B6B6B',
-  textTertiary:  '#AEAEB2',
-  // Borders
-  border:        'rgba(0,0,0,0.1)',
-  borderSubtle:  'rgba(0,0,0,0.06)',
-  // Semantic
-  error:         '#FF3B30',
-  errorBg:       'rgba(255,59,48,0.08)',
-  errorBorder:   'rgba(255,59,48,0.25)',
-  success:       '#34C759',
-  successBg:     'rgba(52,199,89,0.1)',
-  successBorder: 'rgba(52,199,89,0.3)',
-  warning:       '#FF9500',
-  warningBg:     'rgba(255,149,0,0.1)',
-  warningBorder: 'rgba(255,149,0,0.3)',
-  // Priority
-  priorityHigh:       '#FF3B30',
-  priorityHighBg:     'rgba(255,59,48,0.08)',
-  priorityHighBorder: 'rgba(255,59,48,0.2)',
-  priorityMed:        '#FF9500',
-  priorityMedBg:      'rgba(255,149,0,0.1)',
-  priorityMedBorder:  'rgba(255,149,0,0.25)',
-  priorityLow:        '#34C759',
-  priorityLowBg:      'rgba(52,199,89,0.1)',
-  priorityLowBorder:  'rgba(52,199,89,0.25)',
-  // Navigation
-  tabBar:        '#FFFFFF',
-  tabBarBorder:  'rgba(0,0,0,0.1)',
-  // Input
-  inputBg:       '#F2F2F7',
-  placeholder:   '#AEAEB2',
-  // Icon
-  icon:          '#8E8E93',
-  iconActive:    '#5856D6',
-  // Shadow
-  shadow:        '#000000',
-  isDark: false,
+const darkColors: ThemeColors = {
+  background: '#0A0A0A',
+  surface: '#1C1C1E',
+  surfaceAlt: '#2C2C2E',
+  text: '#FFFFFF',
+  textSecondary: '#B8B8BA',
+  textTertiary: '#8E8E93',
+  placeholder: '#5A5A5C',
+  primary: '#0A84FF',
+  primaryLight: 'rgba(10, 132, 255, 0.15)',
+  primaryBorder: 'rgba(10, 132, 255, 0.3)',
+  secondary: '#32ADE6',
+  success: '#34C759',
+  successBg: 'rgba(52, 199, 89, 0.15)',
+  warning: '#FF9500',
+  warningBg: 'rgba(255, 149, 0, 0.15)',
+  error: '#FF453A',
+  errorBg: 'rgba(255, 69, 58, 0.15)',
+  border: '#3A3A3C',
+  borderSubtle: '#2C2C2E',
+  tabBar: '#1C1C1E',
+  tabBarBorder: '#3A3A3C',
+  icon: '#8E8E93',
+  priorityHigh: '#FF453A',
+  priorityHighBg: 'rgba(255, 69, 58, 0.15)',
+  priorityHighBorder: 'rgba(255, 69, 58, 0.3)',
+  priorityMed: '#FF9500',
+  priorityMedBg: 'rgba(255, 149, 0, 0.15)',
+  priorityMedBorder: 'rgba(255, 149, 0, 0.3)',
+  priorityLow: '#34C759',
+  priorityLowBg: 'rgba(52, 199, 89, 0.15)',
+  priorityLowBorder: 'rgba(52, 199, 89, 0.3)',
 };
-
-export type ThemeColors = typeof darkColors;
-
-// ─── Context ─────────────────────────────────────────────────────────────────
 
 interface ThemeContextType {
   isDark: boolean;
-  toggleTheme: () => void;
   colors: ThemeColors;
+  toggleTheme: () => void;
+  theme: ThemeType;
 }
 
-const ThemeContext = createContext<ThemeContextType>({
-  isDark: true,
-  toggleTheme: () => {},
-  colors: darkColors,
-});
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(systemScheme !== 'light'); // default dark
-  const [loaded, setLoaded] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
-  // Load saved preference on mount
   useEffect(() => {
-    const load = async () => {
-      try {
-        if (Platform.OS !== 'web') {
-          const saved = await SecureStore.getItemAsync(THEME_KEY);
-          if (saved !== null) {
-            setIsDark(saved === 'dark');
-          }
-        }
-      } catch {
-        // Ignore storage errors — use default
-      } finally {
-        setLoaded(true);
-      }
-    };
-    load();
-    if (Platform.OS === 'web') setLoaded(true);
+    loadThemePreference();
   }, []);
 
-  const toggleTheme = async () => {
-    const next = !isDark;
-    setIsDark(next);
+  const loadThemePreference = async () => {
     try {
-      if (Platform.OS !== 'web') {
-        await SecureStore.setItemAsync(THEME_KEY, next ? 'dark' : 'light');
+      if (Platform.OS === 'web') {
+        const savedTheme = typeof window !== 'undefined' ? localStorage.getItem('theme') : null;
+        if (savedTheme) {
+          setIsDark(savedTheme === 'dark');
+        }
+      } else {
+        const savedTheme = await AsyncStorage.getItem('theme');
+        if (savedTheme) {
+          setIsDark(savedTheme === 'dark');
+        }
       }
-    } catch {
-      // Ignore
+    } catch (error) {
+      console.error('Error loading theme preference:', error);
     }
   };
 
-  if (!loaded) return null; // Don't flash wrong theme
+  const toggleTheme = async () => {
+    try {
+      const newIsDark = !isDark;
+      setIsDark(newIsDark);
+      
+      if (Platform.OS === 'web') {
+        typeof window !== 'undefined' && localStorage.setItem('theme', newIsDark ? 'dark' : 'light');
+      } else {
+        await AsyncStorage.setItem('theme', newIsDark ? 'dark' : 'light');
+      }
+    } catch (error) {
+      console.error('Error saving theme preference:', error);
+    }
+  };
+
+  const colors = isDark ? darkColors : lightColors;
+  const theme: ThemeType = isDark ? 'dark' : 'light';
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme, colors: isDark ? darkColors : lightColors }}>
+    <ThemeContext.Provider value={{ isDark, colors, toggleTheme, theme }}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
-export const useTheme = () => useContext(ThemeContext);
-
-// ─── Typography helper ────────────────────────────────────────────────────────
-// Returns the native system font (SF Pro on iOS, Roboto on Android)
-export const systemFont = (weight?: 'regular' | 'medium' | 'semibold' | 'bold' | 'heavy'): object => {
-  const weightMap: Record<string, string> = {
-    regular:  '400',
-    medium:   '500',
-    semibold: '600',
-    bold:     '700',
-    heavy:    '800',
-  };
-  return {
-    fontFamily: Platform.select({ ios: undefined, android: undefined, default: undefined }),
-    fontWeight: weightMap[weight || 'regular'] as any,
-  };
-};
+export function useTheme() {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within ThemeProvider');
+  }
+  return context;
+}
