@@ -18,25 +18,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   signUp: async (email, password, fullName) => {
     set({ loading: true });
     try {
+      // Pass full_name as metadata so the DB trigger can use it
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: { full_name: fullName },
+        },
       });
 
       if (authError) throw authError;
 
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: authData.user?.id,
-            email,
-            full_name: fullName,
-            plan: 'free',
-          },
-        ]);
-
-      if (profileError) throw profileError;
+      // If email confirmation is disabled, the session is active immediately.
+      // The DB trigger (handle_new_user) creates the profile row automatically.
+      // Nothing else to do here.
+      console.log('Signup successful for:', authData.user?.id);
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;

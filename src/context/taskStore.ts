@@ -1,6 +1,19 @@
 import { create } from 'zustand';
-import { Task, Subtask, Category } from '@/types';
+import { Task, Subtask, Category, Recurrence } from '@/types';
 import { supabase } from '@/services/supabase';
+
+// ─── Recurrence helpers ───────────────────────────────────────────────────────
+
+function pad(n: number) { return String(n).padStart(2, '0'); }
+
+function nextDueDate(iso: string, recurrence: 'daily' | 'weekly' | 'monthly'): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  if (recurrence === 'daily')   date.setDate(date.getDate() + 1);
+  if (recurrence === 'weekly')  date.setDate(date.getDate() + 7);
+  if (recurrence === 'monthly') date.setMonth(date.getMonth() + 1);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 interface TaskState {
   tasks: Task[];
@@ -10,7 +23,7 @@ interface TaskState {
 
   // Tasks
   fetchTasks: (userId: string) => Promise<void>;
-  createTask: (title: string, description: string | null, categoryId: string | null, priority: string, dueDate: string | null) => Promise<void>;
+  createTask: (title: string, description: string | null, categoryId: string | null, priority: string, dueDate: string | null, recurrence?: Recurrence) => Promise<void>;
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   completeTask: (taskId: string) => Promise<void>;
@@ -55,7 +68,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }
   },
 
-  createTask: async (title, description, categoryId, priority, dueDate) => {
+  createTask: async (title, description, categoryId, priority, dueDate, recurrence = null) => {
     set({ loading: true, error: null });
     try {
       const { data: authUser } = await supabase.auth.getUser();
@@ -63,25 +76,21 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
       const { data, error } = await supabase
         .from('tasks')
-        .insert([
-          {
-            creator_id: authUser.user.id,
-            title,
-            description,
-            category_id: categoryId,
-            priority,
-            due_date: dueDate,
-            status: 'pending',
-          },
-        ])
+        .insert([{
+          creator_id:  authUser.user.id,
+          title,
+          description,
+          category_id: categoryId,
+          priority,
+          due_date:    dueDate,
+          status:      'pending',
+          recurrence:  recurrence ?? null,
+        }])
         .select()
         .single();
 
       if (error) throw error;
-
-      set((state) => ({
-        tasks: [data, ...state.tasks],
-      }));
+      set((state) => ({ tasks: [data, ...state.tasks] }));
     } catch (error: any) {
       set({ error: error.message });
       console.error('Create task error:', error);
@@ -133,10 +142,25 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   },
 
   completeTask: async (taskId) => {
+    // 1. Mark current task as completed
     await get().updateTask(taskId, {
       status: 'completed',
       completed_at: new Date().toISOString(),
     });
+
+    // 2. If it's recurring, create the next instance automatically
+    const task = get().tasks.find(t => t.id === taskId);
+    if (task?.recurrence && task.due_date) {
+      const nextDate = nextDueDate(task.due_date, task.recurrence);
+      await get().createTask(
+        task.title,
+        task.description,
+        task.category_id,
+        task.priority,
+        nextDate,
+        task.recurrence,
+      );
+    }
   },
 
   fetchCategories: async (userId: string) => {

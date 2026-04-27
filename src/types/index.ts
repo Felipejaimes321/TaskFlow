@@ -1,7 +1,8 @@
-export type Priority = 'low' | 'medium' | 'high';
-export type TaskStatus = 'pending' | 'completed' | 'rejected';
+export type Priority         = 'low' | 'medium' | 'high';
+export type TaskStatus       = 'pending' | 'completed' | 'rejected';
 export type AssignmentStatus = 'waiting' | 'accepted' | 'rejected' | null;
-export type UserPlan = 'free' | 'pro';
+export type UserPlan         = 'free' | 'pro';
+export type Recurrence       = 'daily' | 'weekly' | 'monthly' | null;
 
 export interface User {
   id: string;
@@ -41,6 +42,7 @@ export interface Task {
   priority: Priority;
   due_date: string | null;
   status: TaskStatus;
+  recurrence: Recurrence;
   assigned_to: string | null;
   assignment_status: AssignmentStatus;
   rejection_reason: string | null;

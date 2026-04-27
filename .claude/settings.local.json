@@ -9,7 +9,12 @@
       "Bash(git commit *)",
       "mcp__Claude_Preview__preview_start",
       "Bash(base64 -D /Users/felipejaimes/Desktop/Productividad/assets/favicon.png)",
-      "Bash(mv /tmp/favicon.png /Users/felipejaimes/Desktop/Productividad/assets/favicon.png)"
+      "Bash(mv /tmp/favicon.png /Users/felipejaimes/Desktop/Productividad/assets/favicon.png)",
+      "Bash(npm start *)",
+      "Bash(kill -9 56016)",
+      "Bash(killall -9 node)",
+      "Bash(curl -s http://localhost:8081/)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ]
   }
 }
