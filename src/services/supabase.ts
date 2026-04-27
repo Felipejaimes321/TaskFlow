@@ -4,10 +4,6 @@ import { Platform } from 'react-native';
 const supabaseUrl = process.env.SUPABASE_URL || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase credentials in environment variables');
-}
-
 const webStorage = {
   getItem: (key: string) => {
     try {
@@ -43,6 +39,10 @@ if (Platform.OS !== 'web') {
   } catch (e) {
     storage = webStorage;
   }
+}
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase credentials in environment variables');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
