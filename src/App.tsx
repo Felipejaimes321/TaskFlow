@@ -5,10 +5,11 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthStore } from '@/context/authStore';
 import { supabase } from '@/services/supabase';
+import AuthScreen from '@/screens/AuthScreen';
+
+import TasksScreen from '@/screens/TasksScreen';
 
 // Placeholder screens (to be implemented)
-const AuthScreen = () => <View />;
-const TasksScreen = () => <View />;
 const AssignmentsScreen = () => <View />;
 const SettingsScreen = () => <View />;
 
