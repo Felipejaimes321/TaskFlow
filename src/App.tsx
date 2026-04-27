@@ -4,10 +4,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ActivityIndicator, View } from 'react-native';
 import { useAuthStore } from '@/context/authStore';
+import { useTaskStore } from '@/context/taskStore';
 import { supabase } from '@/services/supabase';
 import AuthScreen from '@/screens/AuthScreen';
-
 import TasksScreen from '@/screens/TasksScreen';
+import CreateTaskScreen from '@/screens/CreateTaskScreen';
 
 // Placeholder screens (to be implemented)
 const AssignmentsScreen = () => <View />;
@@ -15,6 +16,21 @@ const SettingsScreen = () => <View />;
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+const TasksStack = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: false,
+    }}
+  >
+    <Stack.Screen name="TasksList" component={TasksScreen} />
+    <Stack.Screen
+      name="CreateTask"
+      component={CreateTaskScreen}
+      options={{ animationEnabled: true }}
+    />
+  </Stack.Navigator>
+);
 
 const TasksTabs = () => {
   return (
@@ -26,8 +42,8 @@ const TasksTabs = () => {
       }}
     >
       <Tab.Screen
-        name="Tasks"
-        component={TasksScreen}
+        name="TasksTab"
+        component={TasksStack}
         options={{ title: 'Mis Tareas' }}
       />
       <Tab.Screen
@@ -54,6 +70,7 @@ const AuthStack = () => {
 
 export default function App() {
   const { loading, user, getCurrentUser } = useAuthStore();
+  const { fetchCategories } = useTaskStore();
 
   useEffect(() => {
     getCurrentUser();
@@ -70,6 +87,12 @@ export default function App() {
       data?.subscription?.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchCategories(user.id);
+    }
+  }, [user?.id]);
 
   if (loading) {
     return (
