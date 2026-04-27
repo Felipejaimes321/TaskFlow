@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Expo Dev Server (Web)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 19000
+    },
+    {
+      "name": "Expo Dev Server (iOS Simulator)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "ios"],
+      "port": 19000
+    },
+    {
+      "name": "Expo Dev Server (Android Emulator)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "android"],
+      "port": 19000
+    }
+  ]
+}

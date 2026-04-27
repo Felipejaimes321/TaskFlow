@@ -6,7 +6,8 @@
       "Bash(npx create-expo-app@latest . --template)",
       "Bash(npm install *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }
