@@ -18,7 +18,14 @@
       "Read(//Users/felipejaimes/.claude/skills/ui-ux-pro-max/**)",
       "Bash(python3 scripts/search.py \"task management mobile collaboration app light dark mode professional\" --design-system -p \"TaskFlow\" -f markdown)",
       "Bash(python3 scripts/search.py \"accessibility focus states keyboard navigation aria labels contrast\" --domain ux -n 10)",
-      "Bash(python3 scripts/search.py \"touch target button size mobile interaction hover loading states\" --domain ux -n 8)"
+      "Bash(python3 scripts/search.py \"touch target button size mobile interaction hover loading states\" --domain ux -n 8)",
+      "Bash(supabase --version)",
+      "Bash(supabase projects *)",
+      "Bash(supabase link *)",
+      "Bash(awk '{print $1}')",
+      "Read(//tmp/**)",
+      "Bash(supabase db *)",
+      "Bash(awk '/ScrollView showsVerticalScrollIndicator/,/end of scroll/' /Users/felipejaimes/Desktop/Productividad/src/screens/TaskDetailScreen.tsx)"
     ]
   }
 }

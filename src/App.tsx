@@ -20,6 +20,7 @@ import TaskDetailScreen from '@/screens/TaskDetailScreen';
 import TaskSuccessScreen from '@/screens/TaskSuccessScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
 import ProgressScreen from '@/screens/ProgressScreen';
+import SharedWithMeScreen from '@/screens/SharedWithMeScreen';
 import { ToastProvider } from '@/components/Toast';
 
 const Stack = createNativeStackNavigator();
@@ -63,15 +64,17 @@ function AppTabs() {
           tabBarIcon: ({ focused, color, size }) => {
             let iconName: any = 'list-outline';
             if (route.name === 'TasksTab')    iconName = focused ? 'checkmark-circle' : 'checkmark-circle-outline';
+            if (route.name === 'SharedWithMe') iconName = focused ? 'share-social' : 'share-social-outline';
             if (route.name === 'Progress')    iconName = focused ? 'flame' : 'flame-outline';
             if (route.name === 'Settings')    iconName = focused ? 'settings' : 'settings-outline';
             return <Ionicons name={iconName} size={24} color={color} />;
           },
         })}
       >
-        <Tab.Screen name="TasksTab"    component={TasksStack}     options={{ title: 'Mis Tareas' }} />
-        <Tab.Screen name="Progress"    component={ProgressScreen} options={{ title: 'Progreso' }} />
-        <Tab.Screen name="Settings"    component={SettingsScreen} options={{ title: 'Ajustes' }} />
+        <Tab.Screen name="TasksTab"      component={TasksStack}     options={{ title: 'Mis Tareas' }} />
+        <Tab.Screen name="SharedWithMe"  component={SharedWithMeScreen} options={{ title: 'Compartidas' }} />
+        <Tab.Screen name="Progress"      component={ProgressScreen} options={{ title: 'Progreso' }} />
+        <Tab.Screen name="Settings"      component={SettingsScreen} options={{ title: 'Ajustes' }} />
       </Tab.Navigator>
     </NavigationContainer>
   );

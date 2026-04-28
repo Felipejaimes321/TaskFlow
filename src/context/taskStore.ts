@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Task, Subtask, Category, Recurrence } from '@/types';
+import { Task, Subtask, Category, Recurrence, TaskAssignment, SubtaskAssignment, User } from '@/types';
 import { supabase } from '@/services/supabase';
 
 // ─── Recurrence helpers ───────────────────────────────────────────────────────
@@ -21,6 +21,9 @@ interface TaskState {
   loading: boolean;
   error: string | null;
 
+  // Collaboration
+  pendingAssignments: (TaskAssignment | SubtaskAssignment)[];
+
   // Tasks
   fetchTasks: (userId: string) => Promise<void>;
   createTask: (title: string, description: string | null, categoryId: string | null, priority: string, dueDate: string | null, recurrence?: Recurrence) => Promise<void>;
@@ -37,6 +40,16 @@ interface TaskState {
   createSubtask: (taskId: string, title: string) => Promise<void>;
   updateSubtask: (subtaskId: string, completed: boolean) => Promise<void>;
   deleteSubtask: (subtaskId: string) => Promise<void>;
+
+  // Collaboration - Sharing
+  shareTask: (taskId: string, recipientEmail: string) => Promise<void>;
+  shareSubtask: (subtaskId: string, recipientEmail: string) => Promise<void>;
+  acceptAssignment: (assignmentId: string, type: 'task' | 'subtask') => Promise<void>;
+  rejectAssignment: (assignmentId: string, type: 'task' | 'subtask', reason?: string) => Promise<void>;
+  fetchPendingAssignments: (userId: string) => Promise<void>;
+  findUserByEmail: (email: string) => Promise<User | null>;
+  getTaskAssignments: (taskId: string) => Promise<TaskAssignment[]>;
+  getSubtaskAssignment: (subtaskId: string) => Promise<SubtaskAssignment | null>;
 }
 
 export const useTaskStore = create<TaskState>((set, get) => ({
@@ -44,6 +57,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   categories: [],
   loading: false,
   error: null,
+  pendingAssignments: [],
 
   fetchTasks: async (userId: string) => {
     set({ loading: true, error: null });
@@ -309,6 +323,236 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       console.error('Delete subtask error:', error);
     } finally {
       set({ loading: false });
+    }
+  },
+
+  // ─── Collaboration Functions ──────────────────────────────────────────────────
+
+  findUserByEmail: async (email) => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email.toLowerCase())
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') return null; // Not found
+        throw error;
+      }
+      return data;
+    } catch (error: any) {
+      console.error('Find user error:', error);
+      throw error;
+    }
+  },
+
+  shareTask: async (taskId, recipientEmail) => {
+    set({ loading: true, error: null });
+    try {
+      // Buscar usuario receptor
+      const recipient = await get().findUserByEmail(recipientEmail);
+      if (!recipient) throw new Error('Usuario no encontrado');
+
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser.user) throw new Error('No autenticado');
+
+      // Crear assignment
+      const { data, error } = await supabase
+        .from('task_assignments')
+        .insert([{
+          task_id: taskId,
+          shared_by_id: authUser.user.id,
+          shared_to_id: recipient.id,
+          status: 'pending',
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') throw new Error('Ya compartida con este usuario');
+        throw error;
+      }
+
+      // Agregar a tareas para ver cambios en tiempo real
+      set((state) => ({
+        tasks: state.tasks.map((t) =>
+          t.id === taskId
+            ? { ...t, shared_with: [...(t.shared_with || []), data] }
+            : t
+        ),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      console.error('Share task error:', error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  shareSubtask: async (subtaskId, recipientEmail) => {
+    set({ loading: true, error: null });
+    try {
+      // Buscar usuario receptor
+      const recipient = await get().findUserByEmail(recipientEmail);
+      if (!recipient) throw new Error('Usuario no encontrado');
+
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser.user) throw new Error('No autenticado');
+
+      // Crear assignment
+      const { data, error } = await supabase
+        .from('subtask_assignments')
+        .insert([{
+          subtask_id: subtaskId,
+          shared_by_id: authUser.user.id,
+          shared_to_id: recipient.id,
+          status: 'pending',
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') throw new Error('Ya compartida con este usuario');
+        throw error;
+      }
+    } catch (error: any) {
+      set({ error: error.message });
+      console.error('Share subtask error:', error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  acceptAssignment: async (assignmentId, type) => {
+    set({ loading: true, error: null });
+    try {
+      const table = type === 'task' ? 'task_assignments' : 'subtask_assignments';
+      const { error } = await supabase
+        .from(table)
+        .update({ status: 'accepted', updated_at: new Date().toISOString() })
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+
+      set((state) => ({
+        pendingAssignments: state.pendingAssignments.filter((a) => a.id !== assignmentId),
+      }));
+
+      // Refetch tareas para actualizar lista
+      const { data: authUser } = await supabase.auth.getUser();
+      if (authUser.user) {
+        await get().fetchTasks(authUser.user.id);
+      }
+    } catch (error: any) {
+      set({ error: error.message });
+      console.error('Accept assignment error:', error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  rejectAssignment: async (assignmentId, type, reason) => {
+    set({ loading: true, error: null });
+    try {
+      const table = type === 'task' ? 'task_assignments' : 'subtask_assignments';
+      const { error } = await supabase
+        .from(table)
+        .update({
+          status: 'rejected',
+          rejection_reason: reason || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+
+      set((state) => ({
+        pendingAssignments: state.pendingAssignments.filter((a) => a.id !== assignmentId),
+      }));
+    } catch (error: any) {
+      set({ error: error.message });
+      console.error('Reject assignment error:', error);
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  fetchPendingAssignments: async (userId) => {
+    set({ loading: true, error: null });
+    try {
+      const { data: taskAssignments, error: taskError } = await supabase
+        .from('task_assignments')
+        .select(`
+          *,
+          task:tasks (id, title, description, creator_id),
+          shared_by:users!task_assignments_shared_by_id_fkey (id, full_name, email)
+        `)
+        .eq('shared_to_id', userId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      const { data: subtaskAssignments, error: subtaskError } = await supabase
+        .from('subtask_assignments')
+        .select(`
+          *,
+          subtask:subtasks (id, title, task_id),
+          shared_by:users!subtask_assignments_shared_by_id_fkey (id, full_name, email)
+        `)
+        .eq('shared_to_id', userId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (taskError) throw taskError;
+      if (subtaskError) throw subtaskError;
+
+      const all = [
+        ...(taskAssignments || []),
+        ...(subtaskAssignments || []),
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      set({ pendingAssignments: all });
+    } catch (error: any) {
+      set({ error: error.message });
+      console.error('Fetch pending assignments error:', error);
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  getTaskAssignments: async (taskId) => {
+    try {
+      const { data, error } = await supabase
+        .from('task_assignments')
+        .select('*, shared_to:users (id, full_name, email)')
+        .eq('task_id', taskId);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error: any) {
+      console.error('Get task assignments error:', error);
+      return [];
+    }
+  },
+
+  getSubtaskAssignment: async (subtaskId) => {
+    try {
+      const { data, error } = await supabase
+        .from('subtask_assignments')
+        .select('*')
+        .eq('subtask_id', subtaskId)
+        .eq('status', 'accepted')
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || null;
+    } catch (error: any) {
+      console.error('Get subtask assignment error:', error);
+      return null;
     }
   },
 }));

@@ -63,3 +63,46 @@ export interface TaskHistory {
   details: Record<string, any>;
   created_at: string;
 }
+
+// Types para Sistema de Colaboración
+export type AssignmentStatusType = 'pending' | 'accepted' | 'rejected';
+
+export interface TaskAssignment {
+  id: string;
+  task_id: string;
+  shared_by_id: string;
+  shared_to_id: string;
+  status: AssignmentStatusType;
+  rejection_reason?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relaciones cargadas opcionalmente:
+  task?: Task;
+  shared_by?: User;
+  shared_to?: User;
+}
+
+export interface SubtaskAssignment {
+  id: string;
+  subtask_id: string;
+  shared_by_id: string;
+  shared_to_id: string;
+  status: AssignmentStatusType;
+  rejection_reason?: string | null;
+  created_at: string;
+  updated_at: string;
+  // Relaciones:
+  subtask?: Subtask;
+  shared_by?: User;
+  shared_to?: User;
+}
+
+// Extensiones a tipos existentes
+export interface TaskWithAssignments extends Task {
+  shared_with?: TaskAssignment[]; // quién recibió esta tarea (si soy creator)
+  assignment_from?: TaskAssignment; // si yo la recibí (si soy receptor)
+}
+
+export interface SubtaskWithAssignment extends Subtask {
+  assignment?: SubtaskAssignment; // si yo la recibí (si soy receptor)
+}

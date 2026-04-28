@@ -11,6 +11,8 @@ import { Task, Subtask, Recurrence } from '@/types';
 import ProgressRing from '@/components/ProgressRing';
 import CelebrationModal from '@/components/CelebrationModal';
 import InlineDatePicker from '@/components/InlineDatePicker';
+import ShareModal from '@/components/ShareModal';
+import ShareInfo from '@/components/ShareInfo';
 import { useToast } from '@/components/Toast';
 import { formatDate, offsetDate } from '@/utils/dateUtils';
 import { generateSubtasks } from '@/services/aiService';
@@ -67,7 +69,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
   const { colors, isDark } = useTheme();
   const { user } = useAuthStore();
   const { showToast } = useToast();
-  const { tasks, categories, createSubtask, updateSubtask, deleteSubtask, completeTask, updateTask } = useTaskStore();
+  const { tasks, categories, createSubtask, updateSubtask, deleteSubtask, completeTask, updateTask, shareTask, shareSubtask, getTaskAssignments } = useTaskStore();
 
   const task: Task | undefined = tasks.find(t => t.id === taskId);
 
@@ -89,6 +91,11 @@ export default function TaskDetailScreen({ route, navigation }: any) {
   const [wasComplete, setWasComplete]     = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
+  // ── Collaboration state ────────────────────────────────────────────────────
+  const [showShareTaskModal, setShowShareTaskModal] = useState(false);
+  const [shareSubtaskId, setShareSubtaskId] = useState<string | null>(null);
+  const [taskAssignments, setTaskAssignments] = useState<any[]>([]);
+
   const subtasks = task?.subtasks || [];
   const total    = subtasks.length;
   const done     = subtasks.filter(s => s.completed).length;
@@ -104,6 +111,47 @@ export default function TaskDetailScreen({ route, navigation }: any) {
     }
     setWasComplete(isNowComplete);
   }, [done, total]);
+
+  // Load task assignments
+  useEffect(() => {
+    if (!task?.id) return;
+    loadTaskAssignments();
+  }, [task?.id]);
+
+  const loadTaskAssignments = async () => {
+    try {
+      const assignments = await getTaskAssignments(task?.id || '');
+      setTaskAssignments(assignments);
+    } catch (error) {
+      console.error('Error loading task assignments:', error);
+    }
+  };
+
+  const handleShareTask = async (email: string) => {
+    if (!task?.id) return;
+    try {
+      await shareTask(task.id, email);
+      showToast({ message: 'Tarea compartida exitosamente', type: 'success' });
+      hapticNotification('success');
+      loadTaskAssignments();
+    } catch (error: any) {
+      showToast({ message: error.message || 'Error al compartir', type: 'error' });
+      hapticNotification('error');
+    }
+  };
+
+  const handleShareSubtask = async (email: string) => {
+    if (!shareSubtaskId) return;
+    try {
+      await shareSubtask(shareSubtaskId, email);
+      showToast({ message: 'Subtarea compartida exitosamente', type: 'success' });
+      hapticNotification('success');
+      setShareSubtaskId(null);
+    } catch (error: any) {
+      showToast({ message: error.message || 'Error al compartir', type: 'error' });
+      hapticNotification('error');
+    }
+  };
 
   const startEditing = () => {
     if (!task) return;
@@ -235,12 +283,20 @@ export default function TaskDetailScreen({ route, navigation }: any) {
             {isSaving ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="checkmark" size={20} color="#fff" />}
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity
-            style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            onPress={startEditing}
-          >
-            <Ionicons name="pencil" size={18} color={colors.text} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={() => setShowShareTaskModal(true)}
+            >
+              <Ionicons name="share-social" size={18} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              onPress={startEditing}
+            >
+              <Ionicons name="pencil" size={18} color={colors.text} />
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -465,6 +521,24 @@ export default function TaskDetailScreen({ route, navigation }: any) {
         <View style={{ height: 60 }} />
       </ScrollView>
 
+      {/* Share Modals */}
+      <ShareModal
+        visible={showShareTaskModal}
+        onClose={() => setShowShareTaskModal(false)}
+        taskTitle={task?.title}
+        onShare={handleShareTask}
+      />
+
+      {shareSubtaskId && (
+        <ShareModal
+          visible={!!shareSubtaskId}
+          onClose={() => setShareSubtaskId(null)}
+          subtaskTitle={task?.subtasks?.find(s => s.id === shareSubtaskId)?.title}
+          taskTitle={task?.title}
+          onShare={handleShareSubtask}
+        />
+      )}
+
       <CelebrationModal
         visible={showCelebration}
         taskTitle={task.title}
@@ -479,6 +553,7 @@ const styles = StyleSheet.create({
   container:         { flex: 1 },
   header:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 56, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   headerBtn:         { width: 38, height: 38, borderRadius: 19, justifyContent: 'center', alignItems: 'center', borderWidth: StyleSheet.hairlineWidth },
+  headerActions:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle:       { flex: 1, fontSize: 16, fontWeight: '700', textAlign: 'center', marginHorizontal: 8 },
   scroll:            { padding: 16, gap: 12, paddingBottom: 60 },
   progressSection:   { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 18, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth },
