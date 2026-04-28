@@ -10,6 +10,7 @@ import { useAuthStore } from '@/context/authStore';
 import { Task, Subtask, Recurrence } from '@/types';
 import ProgressRing from '@/components/ProgressRing';
 import CelebrationModal from '@/components/CelebrationModal';
+import InlineDatePicker from '@/components/InlineDatePicker';
 import { useToast } from '@/components/Toast';
 import { formatDate, offsetDate } from '@/utils/dateUtils';
 import { generateSubtasks } from '@/services/aiService';
@@ -216,10 +217,16 @@ export default function TaskDetailScreen({ route, navigation }: any) {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.borderSubtle }]}>
-        <TouchableOpacity style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => { setIsEditing(false); navigation.goBack(); }}>
+        <TouchableOpacity 
+          style={[styles.headerBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} 
+          onPress={() => { 
+            if (isEditing) setIsEditing(false);
+            else navigation.goBack(); 
+          }}
+        >
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{task.title}</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{task?.title || 'Detalle'}</Text>
         {isEditing ? (
           <TouchableOpacity
             style={[styles.headerBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
@@ -376,7 +383,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                 <View style={[styles.metaBadge, { backgroundColor: getPriorityColor() + '18', borderColor: getPriorityColor() + '44' }]}>
                   <Ionicons name="flag" size={12} color={getPriorityColor()} />
                   <Text style={[styles.metaBadgeText, { color: getPriorityColor() }]}>
-                    Prioridad {PRIORITY_LABELS[task.priority]}
+                    Prioridad {PRIORITY_LABELS[task.priority] || 'Baja'}
                   </Text>
                 </View>
                 {task.due_date && (
@@ -387,8 +394,8 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                 )}
                 {task.category && (
                   <View style={[styles.metaBadge, { backgroundColor: task.category.color + '18', borderColor: task.category.color + '44' }]}>
-                    <View style={[styles.colorDot, { backgroundColor: task.category.color }]} />
-                    <Text style={[styles.metaBadgeText, { color: task.category.color }]}>{task.category.name}</Text>
+                    <View style={[styles.colorDot, { backgroundColor: task.category?.color || colors.primary }]} />
+                    <Text style={[styles.metaBadgeText, { color: task.category?.color || colors.primary }]}>{task.category?.name || 'Categoría'}</Text>
                   </View>
                 )}
               </View>
