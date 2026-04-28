@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, StatusBar,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Switch, StatusBar, ActivityIndicator, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/context/authStore';
@@ -8,21 +9,40 @@ import { useTheme } from '@/context/themeContext';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
+// cursor:pointer helper for web
+const webPointer: any = Platform.OS === 'web' ? { cursor: 'pointer' } : {};
+
 function MenuItem({
-  icon, label, onPress, danger = false, rightElement,
+  icon, label, onPress, danger = false, rightElement, accessibilityLabel,
 }: {
-  icon: IoniconsName; label: string; onPress?: () => void; danger?: boolean; rightElement?: React.ReactNode;
+  icon: IoniconsName; label: string; onPress?: () => void;
+  danger?: boolean; rightElement?: React.ReactNode; accessibilityLabel?: string;
 }) {
   const { colors } = useTheme();
+  const [focused, setFocused] = useState(false);
+
   return (
     <TouchableOpacity
-      style={[styles.menuItem, { borderBottomColor: colors.borderSubtle }]}
+      style={[
+        styles.menuItem,
+        { borderBottomColor: colors.borderSubtle },
+        focused && { backgroundColor: colors.surfaceAlt },
+        webPointer,
+      ]}
       onPress={onPress}
       activeOpacity={0.6}
       disabled={!onPress && !rightElement}
+      accessible
+      accessibilityLabel={accessibilityLabel || label}
+      accessibilityRole="button"
+      // Focus ring for web keyboard navigation
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
     >
       <View style={[styles.menuIconBox, { backgroundColor: danger ? colors.errorBg : colors.primaryLight }]}>
-        <Ionicons name={icon} size={18} color={danger ? colors.error : colors.primary} />
+        <Ionicons name={icon} size={18} color={danger ? colors.error : colors.primary}
+          accessibilityLabel={label}
+        />
       </View>
       <Text style={[styles.menuLabel, { color: danger ? colors.error : colors.text }]}>{label}</Text>
       {rightElement ?? (
@@ -36,8 +56,13 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuthStore();
   const { colors, isDark, toggleTheme } = useTheme();
 
+  const [signingOut, setSigningOut] = useState(false);
+
   const handleSignOut = async () => {
-    try { await signOut(); } catch (e: any) { /* silent */ }
+    setSigningOut(true);
+    try { await signOut(); }
+    catch (e: any) { /* silent */ }
+    finally { setSigningOut(false); }
   };
 
   const initials = user?.full_name
@@ -71,6 +96,7 @@ export default function SettingsScreen() {
             <MenuItem
               icon={isDark ? 'moon' : 'sunny'}
               label={isDark ? 'Modo oscuro' : 'Modo claro'}
+              accessibilityLabel={isDark ? 'Desactivar modo oscuro' : 'Activar modo oscuro'}
               rightElement={
                 <Switch
                   value={isDark}
@@ -78,6 +104,7 @@ export default function SettingsScreen() {
                   trackColor={{ false: colors.surfaceAlt, true: colors.primary }}
                   thumbColor="#FFFFFF"
                   ios_backgroundColor={colors.surfaceAlt}
+                  accessibilityLabel="Cambiar tema"
                 />
               }
             />
@@ -105,7 +132,13 @@ export default function SettingsScreen() {
                     Colaboración ilimitada por $4.99/mes
                   </Text>
                 </View>
-                <TouchableOpacity style={[styles.upgradeBtn, { backgroundColor: colors.primary }]} activeOpacity={0.8}>
+                <TouchableOpacity
+                  style={[styles.upgradeBtn, { backgroundColor: colors.primary }, webPointer]}
+                  activeOpacity={0.8}
+                  accessible
+                  accessibilityLabel="Ver plan Pro"
+                  accessibilityRole="button"
+                >
                   <Text style={styles.upgradeBtnText}>Ver</Text>
                 </TouchableOpacity>
               </View>
@@ -128,7 +161,29 @@ export default function SettingsScreen() {
         {/* Sign out */}
         <View style={[styles.section, { marginBottom: 48 }]}>
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-            <MenuItem icon="log-out-outline" label="Cerrar sesión" onPress={handleSignOut} danger />
+            <TouchableOpacity
+              style={[
+                styles.menuItem,
+                { borderBottomColor: 'transparent', opacity: signingOut ? 0.5 : 1 },
+                webPointer,
+              ]}
+              onPress={handleSignOut}
+              disabled={signingOut}
+              activeOpacity={0.6}
+              accessible
+              accessibilityLabel="Cerrar sesión"
+              accessibilityRole="button"
+            >
+              <View style={[styles.menuIconBox, { backgroundColor: colors.errorBg }]}>
+                {signingOut
+                  ? <ActivityIndicator size="small" color={colors.error} />
+                  : <Ionicons name="log-out-outline" size={18} color={colors.error} />
+                }
+              </View>
+              <Text style={[styles.menuLabel, { color: colors.error }]}>
+                {signingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -138,24 +193,24 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container:     { flex: 1 },
   profileHeader: { paddingTop: 60, paddingBottom: 28, alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth },
-  avatar: { width: 76, height: 76, borderRadius: 38, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  avatarText: { fontSize: 26, fontWeight: '700', color: '#FFFFFF' },
-  userName: { fontSize: 19, fontWeight: '700', marginBottom: 4 },
-  userEmail: { fontSize: 13, marginBottom: 12 },
-  planBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1 },
-  planText: { fontSize: 12, fontWeight: '700' },
-  section: { paddingHorizontal: 16, marginTop: 24 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 8, paddingLeft: 4 },
-  card: { borderRadius: 14, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth },
-  menuIconBox: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  menuLabel: { flex: 1, fontSize: 15, fontWeight: '500' },
-  upgradeRow: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth },
-  upgradeLeft: { flex: 1 },
-  upgradeTitle: { fontSize: 15, fontWeight: '700', marginBottom: 3 },
-  upgradeDesc: { fontSize: 12, lineHeight: 16 },
-  upgradeBtn: { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
-  upgradeBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
+  avatar:        { width: 76, height: 76, borderRadius: 38, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  avatarText:    { fontSize: 26, fontWeight: '700', color: '#FFFFFF' },
+  userName:      { fontSize: 19, fontWeight: '700', marginBottom: 4 },
+  userEmail:     { fontSize: 13, marginBottom: 12 },
+  planBadge:     { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1 },
+  planText:      { fontSize: 12, fontWeight: '700' },
+  section:       { paddingHorizontal: 16, marginTop: 24 },
+  sectionTitle:  { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 8, paddingLeft: 4 },
+  card:          { borderRadius: 14, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+  menuItem:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, borderBottomWidth: StyleSheet.hairlineWidth },
+  menuIconBox:   { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  menuLabel:     { flex: 1, fontSize: 15, fontWeight: '500' },
+  upgradeRow:    { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth },
+  upgradeLeft:   { flex: 1 },
+  upgradeTitle:  { fontSize: 15, fontWeight: '700', marginBottom: 3 },
+  upgradeDesc:   { fontSize: 12, lineHeight: 16 },
+  upgradeBtn:    { borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
+  upgradeBtnText:{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 },
 });
