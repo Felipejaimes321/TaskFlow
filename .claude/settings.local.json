@@ -25,7 +25,8 @@
       "Bash(awk '{print $1}')",
       "Read(//tmp/**)",
       "Bash(supabase db *)",
-      "Bash(awk '/ScrollView showsVerticalScrollIndicator/,/end of scroll/' /Users/felipejaimes/Desktop/Productividad/src/screens/TaskDetailScreen.tsx)"
+      "Bash(awk '/ScrollView showsVerticalScrollIndicator/,/end of scroll/' /Users/felipejaimes/Desktop/Productividad/src/screens/TaskDetailScreen.tsx)",
+      "Bash(git push *)"
     ]
   }
 }

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow — Organiza sin imponer</title>
+    <meta name="description" content="TaskFlow es la herramienta de gestión de tareas colaborativas diseñada para el respeto y la productividad. Acepta o rechaza tareas con estilo.">
+    <link rel="stylesheet" href="landing.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="nav">
+        <div class="logo">TaskFlow</div>
+        <div class="nav-links">
+            <a href="#features">Funciones</a>
+            <a href="#about">Acerca de</a>
+            <a href="/login" class="btn-login">Entrar</a>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <h1 id="hero-title">Organiza.<br>No impongas.</h1>
+        <p>La primera app de tareas donde la colaboración es un diálogo, no una orden. Diseñada para parejas, familias y equipos que valoran la autonomía.</p>
+        <div class="cta-group">
+            <a href="/signup" class="btn btn-primary">Empieza Gratis</a>
+            <a href="#features" class="btn btn-secondary">Ver más</a>
+        </div>
+
+        <div class="mockup-container">
+            <img src="taskflow_iphone_mockup_1777396461573.png" alt="TaskFlow iPhone Mockup" id="hero-mockup">
+        </div>
+    </header>
+
+    <section id="features" class="section">
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Asignación Negociada</h3>
+                <p>No más tareas impuestas. El ejecutor recibe una solicitud que puede aceptar o rechazar con un motivo claro.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Progreso Real</h3>
+                <p>Visualiza el avance de cada tarea mediante subtareas. Sincronización en tiempo real para que todos estén en la misma página.</p>
+            </div>
+            <div class="feature-card">
+                <h3>Estética iOS</h3>
+                <p>Una interfaz minimalista y "gomela" que se siente como parte nativa de tu dispositivo Apple.</p>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Simple parallax effect on mockup
+        window.addEventListener('scroll', () => {
+            const mockup = document.getElementById('hero-mockup');
+            const scrolled = window.pageYOffset;
+            mockup.style.transform = `translateY(${scrolled * 0.1}px) rotateX(${scrolled * 0.02}deg)`;
+        });
+
+        // Fade in title on load
+        window.addEventListener('load', () => {
+            const title = document.getElementById('hero-title');
+            title.style.opacity = '0';
+            title.style.transform = 'translateY(20px)';
+            title.style.transition = 'all 1s ease-out';
+            
+            setTimeout(() => {
+                title.style.opacity = '1';
+                title.style.transform = 'translateY(0)';
+            }, 100);
+        });
+    </script>
+</body>
+</html>

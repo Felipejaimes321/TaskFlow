@@ -48,13 +48,20 @@ function InputField({
   );
 }
 
-export default function AuthScreen() {
-  const [isSignUp, setIsSignUp]         = useState(false);
+export default function AuthScreen({ route }: any) {
+  const initialIsSignUp = route?.params?.isSignUp ?? false;
+  const [isSignUp, setIsSignUp]         = useState(initialIsSignUp);
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
   const [fullName, setFullName]         = useState('');
   const [loading, setLoading]           = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (route?.params?.isSignUp !== undefined) {
+      setIsSignUp(route.params.isSignUp);
+    }
+  }, [route?.params?.isSignUp]);
 
   const { signIn, signUp } = useAuthStore();
   const { colors, isDark } = useTheme();

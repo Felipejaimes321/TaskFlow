@@ -21,6 +21,7 @@ import TaskSuccessScreen from '@/screens/TaskSuccessScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
 import ProgressScreen from '@/screens/ProgressScreen';
 import SharedWithMeScreen from '@/screens/SharedWithMeScreen';
+import LandingScreen from '@/screens/LandingScreen';
 import { ToastProvider } from '@/components/Toast';
 
 const Stack = createNativeStackNavigator();
@@ -88,7 +89,8 @@ function AuthNavigator() {
 
   return (
     <NavigationContainer theme={navTheme}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Landing">
+        <Stack.Screen name="Landing" component={LandingScreen} />
         <Stack.Screen name="Auth" component={AuthScreen} />
       </Stack.Navigator>
     </NavigationContainer>

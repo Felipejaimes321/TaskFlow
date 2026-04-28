@@ -28,8 +28,8 @@ const RECURRENCE_OPTIONS: { key: Recurrence; label: string }[] = [
 ];
 
 function SubtaskRow({
-  subtask, onToggle, onDelete,
-}: { subtask: Subtask; onToggle: () => void; onDelete: () => void; }) {
+  subtask, onToggle, onDelete, onShare,
+}: { subtask: Subtask; onToggle: () => void; onDelete: () => void; onShare?: () => void; }) {
   const { colors } = useTheme();
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -57,9 +57,16 @@ function SubtaskRow({
       <Text style={[styles.subtaskTitle, { color: subtask.completed ? colors.textTertiary : colors.text }, subtask.completed && styles.subtaskDone]}>
         {subtask.title}
       </Text>
-      <TouchableOpacity onPress={onDelete} style={styles.subtaskDeleteBtn}>
-        <Ionicons name="close" size={15} color={colors.textTertiary} />
-      </TouchableOpacity>
+      <View style={styles.subtaskActions}>
+        {onShare && (
+          <TouchableOpacity onPress={onShare} style={styles.subtaskActionBtn}>
+            <Ionicons name="share-social" size={14} color={colors.primary} />
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity onPress={onDelete} style={styles.subtaskActionBtn}>
+          <Ionicons name="close" size={15} color={colors.textTertiary} />
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -492,6 +499,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
                 key={s.id} subtask={s}
                 onToggle={() => handleToggle(s)}
                 onDelete={() => handleDeleteSubtask(s.id)}
+                onShare={() => setShareSubtaskId(s.id)}
               />
             ))
           )}
@@ -592,7 +600,8 @@ const styles = StyleSheet.create({
   subtaskCheck:      { width: 22, height: 22, borderRadius: 11, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
   subtaskTitle:      { flex: 1, fontSize: 14, fontWeight: '500' },
   subtaskDone:       { textDecorationLine: 'line-through' },
-  subtaskDeleteBtn:  { padding: 4 },
+  subtaskActions:    { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  subtaskActionBtn:  { padding: 4 },
   addRow:            { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: StyleSheet.hairlineWidth, gap: 10 },
   addInput:          { flex: 1, fontSize: 15, paddingVertical: 6 },
   addBtn:            { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
