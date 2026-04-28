@@ -158,7 +158,7 @@ export default function CreateTaskScreen({ navigation }: any) {
         {/* ── Title ──────────────────────────────────────────────── */}
         <TextInput
           ref={titleRef}
-          style={[styles.titleInput, { color: colors.text }]}
+          style={[styles.titleInput, { color: colors.text }, Platform.OS === 'web' && { outlineStyle: 'none' } as any]}
           placeholder="¿Qué necesitas hacer?"
           placeholderTextColor={colors.placeholder}
           value={title} onChangeText={setTitle}
@@ -174,7 +174,7 @@ export default function CreateTaskScreen({ navigation }: any) {
         ) : (
           <Animated.View style={{ opacity: descAnim }}>
             <TextInput
-              style={[styles.descInput, { color: colors.text, borderColor: colors.borderSubtle }]}
+              style={[styles.descInput, { color: colors.text, borderColor: colors.borderSubtle }, Platform.OS === 'web' && { outlineStyle: 'none' } as any]}
               placeholder="Notas adicionales..."
               placeholderTextColor={colors.placeholder}
               value={description} onChangeText={setDescription}

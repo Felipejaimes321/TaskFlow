@@ -26,7 +26,7 @@ function InputField({
       <View style={[styles.inputBox, { backgroundColor: colors.surfaceAlt }]}>
         <Ionicons name={icon} size={20} color={colors.textTertiary} style={styles.inputIcon} />
         <TextInput
-          style={[styles.input, { color: colors.text, flex: rightIcon ? 1 : undefined }]}
+          style={[styles.input, { color: colors.text, flex: rightIcon ? 1 : undefined }, Platform.OS === 'web' && { outlineStyle: 'none' } as any]}
           placeholder={placeholder}
           placeholderTextColor={colors.placeholder}
           value={value}
