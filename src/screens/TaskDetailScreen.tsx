@@ -10,9 +10,10 @@ import { useAuthStore } from '@/context/authStore';
 import { Task, Subtask, Recurrence } from '@/types';
 import ProgressRing from '@/components/ProgressRing';
 import CelebrationModal from '@/components/CelebrationModal';
-import InlineDatePicker from '@/components/InlineDatePicker';
+import { useToast } from '@/components/Toast';
 import { formatDate, offsetDate } from '@/utils/dateUtils';
 import { generateSubtasks } from '@/services/aiService';
+import { hapticImpact, hapticNotification } from '@/utils/haptics';
 
 const PRIORITY_LABELS: Record<string, string> = { high: 'Alta', medium: 'Media', low: 'Baja' };
 
@@ -30,6 +31,7 @@ function SubtaskRow({
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   const handleToggle = () => {
+    hapticImpact('light');
     Animated.sequence([
       Animated.spring(scaleAnim, { toValue: 0.92, tension: 300, friction: 5, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1,    tension: 300, friction: 5, useNativeDriver: true }),
@@ -63,6 +65,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
   const { taskId } = route.params as { taskId: string };
   const { colors, isDark } = useTheme();
   const { user } = useAuthStore();
+  const { showToast } = useToast();
   const { tasks, categories, createSubtask, updateSubtask, deleteSubtask, completeTask, updateTask } = useTaskStore();
 
   const task: Task | undefined = tasks.find(t => t.id === taskId);
@@ -94,6 +97,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
     if (!task) return;
     const isNowComplete = total > 0 && done === total;
     if (isNowComplete && !wasComplete && task.status !== 'completed') {
+      hapticNotification('success');
       setShowCelebration(true);
       completeTask(task.id);
     }
@@ -125,9 +129,9 @@ export default function TaskDetailScreen({ route, navigation }: any) {
         due_date:    editDueDate,
       } as any);
       setIsEditing(false);
+      showToast({ message: 'Tarea actualizada', type: 'success' });
     } catch (e: any) {
-      if (Platform.OS === 'web') window.alert('Error al guardar: ' + e.message);
-      else Alert.alert('Error', e.message);
+      showToast({ message: 'Error al guardar: ' + e.message, type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -139,10 +143,10 @@ export default function TaskDetailScreen({ route, navigation }: any) {
     try {
       setAddingSubtask(true);
       await createSubtask(taskId, title);
+      hapticImpact('light');
       setNewSubtask('');
     } catch (e: any) {
-      if (Platform.OS === 'web') window.alert(e.message);
-      else Alert.alert('Error', e.message);
+      showToast({ message: e.message || 'Error', type: 'error' });
     } finally {
       setAddingSubtask(false);
     }
@@ -151,8 +155,7 @@ export default function TaskDetailScreen({ route, navigation }: any) {
   const handleToggle = async (subtask: Subtask) => {
     try { await updateSubtask(subtask.id, !subtask.completed); }
     catch (e: any) {
-      if (Platform.OS === 'web') window.alert(e.message);
-      else Alert.alert('Error', e.message);
+      showToast({ message: e.message || 'Error', type: 'error' });
     }
   };
 
@@ -165,9 +168,9 @@ export default function TaskDetailScreen({ route, navigation }: any) {
         await createSubtask(task.id, st);
         await new Promise(r => setTimeout(r, 200));
       }
+      showToast({ message: 'Subtareas generadas', type: 'success' });
     } catch (e: any) {
-      if (Platform.OS === 'web') window.alert('Error IA: ' + e.message);
-      else Alert.alert('Error IA', e.message);
+      showToast({ message: 'Error IA: ' + e.message, type: 'error' });
     } finally {
       setIsGeneratingAI(false);
     }
@@ -175,8 +178,12 @@ export default function TaskDetailScreen({ route, navigation }: any) {
 
   const handleDeleteSubtask = (subtaskId: string) => {
     if (Platform.OS === 'web') {
-      if (window.confirm('¿Seguro que quieres eliminar esta subtarea?')) { deleteSubtask(subtaskId); }
+      if (window.confirm('¿Seguro que quieres eliminar esta subtarea?')) { 
+        hapticNotification('warning');
+        deleteSubtask(subtaskId); 
+      }
     } else {
+      hapticNotification('warning');
       Alert.alert('Eliminar subtarea', '¿Seguro?', [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: () => deleteSubtask(subtaskId) },

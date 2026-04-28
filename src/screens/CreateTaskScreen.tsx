@@ -6,10 +6,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTaskStore } from '@/context/taskStore';
 import { useTheme } from '@/context/themeContext';
+import { useToast } from '@/components/Toast';
 import { Recurrence } from '@/types';
 import { offsetDate, formatDate } from '@/utils/dateUtils';
 import InlineDatePicker from '@/components/InlineDatePicker';
 import InlineCategoryCreator from '@/components/InlineCategoryCreator';
+import { hapticNotification } from '@/utils/haptics';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -82,6 +84,7 @@ const RECURRENCE_OPTIONS: { key: Recurrence; label: string; icon: IoniconsName }
 export default function CreateTaskScreen({ navigation }: any) {
   const { categories, createTask, loading } = useTaskStore();
   const { colors, isDark } = useTheme();
+  const { showToast } = useToast();
 
   // Form state
   const [title,       setTitle]       = useState('');
@@ -122,6 +125,7 @@ export default function CreateTaskScreen({ navigation }: any) {
     if (!trimmed) { titleRef.current?.focus(); return; }
     try {
       await createTask(trimmed, description.trim() || null, categoryId, priority, resolvedDate(), recurrence);
+      hapticNotification('success');
       navigation.replace('TaskSuccess', {
         title: trimmed,
         priority,
@@ -130,7 +134,8 @@ export default function CreateTaskScreen({ navigation }: any) {
         recurrence,
       });
     } catch (error: any) {
-      Alert.alert('Error al crear', error.message);
+      hapticNotification('error');
+      showToast({ message: error.message || 'Error al crear', type: 'error' });
     }
   };
 

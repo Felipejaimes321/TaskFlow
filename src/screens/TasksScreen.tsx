@@ -9,7 +9,9 @@ import { useTaskStore } from '@/context/taskStore';
 import { useTheme } from '@/context/themeContext';
 import { Task } from '@/types';
 import TimelinePicker from '@/components/TimelinePicker';
+import TaskSkeleton from '@/components/TaskSkeleton';
 import { formatDate } from '@/utils/dateUtils';
+import { hapticImpact, hapticNotification } from '@/utils/haptics';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -120,6 +122,7 @@ export default function TasksScreen({ navigation }: any) {
 
   const handleComplete = (taskId: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    hapticImpact('medium');
     completeTask(taskId);
   };
 
@@ -127,9 +130,11 @@ export default function TasksScreen({ navigation }: any) {
     if (Platform.OS === 'web') {
       if (window.confirm('¿Seguro? Esta acción no se puede deshacer.')) {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        hapticNotification('warning');
         deleteTask(taskId);
       }
     } else {
+      hapticNotification('warning');
       Alert.alert('Eliminar tarea', '¿Seguro? Esta acción no se puede deshacer.', [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: () => {
@@ -153,9 +158,21 @@ export default function TasksScreen({ navigation }: any) {
 
   if (loading && tasks.length === 0) {
     return (
-      <View style={[styles.loading, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <ActivityIndicator size="large" color={colors.primary} />
+        <View style={[styles.header, { borderBottomColor: colors.borderSubtle, opacity: 0.5 }]}>
+          <View>
+            <Text style={[styles.greeting, { color: colors.textSecondary }]}>Cargando...</Text>
+            <Text style={[styles.title, { color: colors.text }]}>Mis Tareas</Text>
+          </View>
+        </View>
+        <View style={styles.listContent}>
+          <TaskSkeleton />
+          <TaskSkeleton />
+          <TaskSkeleton />
+          <TaskSkeleton />
+          <TaskSkeleton />
+        </View>
       </View>
     );
   }
@@ -281,7 +298,7 @@ export default function TasksScreen({ navigation }: any) {
       )}
 
       {/* FAB */}
-      <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate('CreateTask')} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]} onPress={() => { hapticImpact('light'); navigation.navigate('CreateTask'); }} activeOpacity={0.85}>
         <Ionicons name="add" size={28} color="#FFFFFF" />
       </TouchableOpacity>
     </View>

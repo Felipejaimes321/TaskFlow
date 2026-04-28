@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/context/authStore';
 import { useTheme } from '@/context/themeContext';
+import { useToast } from '@/components/Toast';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -54,11 +55,10 @@ export default function AuthScreen() {
   const [fullName, setFullName]         = useState('');
   const [loading, setLoading]           = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg]         = useState('');
-  const [successMsg, setSuccessMsg]     = useState('');
 
   const { signIn, signUp } = useAuthStore();
   const { colors, isDark } = useTheme();
+  const { showToast } = useToast();
 
   const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
@@ -72,10 +72,7 @@ export default function AuthScreen() {
     ]).start();
   }, [isSignUp]);
 
-  const clear = () => { setErrorMsg(''); setSuccessMsg(''); };
-
   const toggleMode = () => { 
-    clear(); 
     setIsSignUp(!isSignUp); 
     setEmail(''); 
     setPassword(''); 
@@ -86,30 +83,23 @@ export default function AuthScreen() {
   };
 
   const handleAuth = async () => {
-    clear();
-    if (!email || !password) { setErrorMsg('Completa todos los campos.'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setErrorMsg('Correo no válido.'); return; }
-    if (password.length < 6) { setErrorMsg('La contraseña debe tener al menos 6 caracteres.'); return; }
-    if (isSignUp && !fullName.trim()) { setErrorMsg('Ingresa tu nombre.'); return; }
+    if (!email || !password) { showToast({ message: 'Completa todos los campos.', type: 'error' }); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast({ message: 'Correo no válido.', type: 'error' }); return; }
+    if (password.length < 6) { showToast({ message: 'La contraseña debe tener al menos 6 caracteres.', type: 'error' }); return; }
+    if (isSignUp && !fullName.trim()) { showToast({ message: 'Ingresa tu nombre.', type: 'error' }); return; }
 
     setLoading(true);
     try {
       if (isSignUp) {
         await signUp(email, password, fullName.trim());
-        setSuccessMsg('¡Cuenta creada! Ahora inicia sesión.');
+        showToast({ message: '¡Cuenta creada! Ahora inicia sesión.', type: 'success' });
         setIsSignUp(false); setEmail(''); setPassword(''); setFullName('');
       } else {
         await signIn(email, password);
       }
     } catch (error: any) {
       const raw = error?.message || JSON.stringify(error) || 'Error desconocido';
-      if (Platform.OS === 'web') {
-        window.alert('ERROR DE SUPABASE: ' + raw);
-      }
-      if (raw.includes('Invalid login') || raw.includes('invalid_credentials')) setErrorMsg('Correo o contraseña incorrectos.');
-      else if (raw.includes('already registered')) setErrorMsg('Este correo ya tiene una cuenta. Inicia sesión.');
-      else if (raw.includes('Email not confirmed')) setErrorMsg('Confirma tu correo antes de iniciar sesión.');
-      else setErrorMsg(raw || 'Algo salió mal. Intenta de nuevo.');
+      showToast({ message: 'Error de acceso: ' + raw, type: 'error', duration: 5000 });
     } finally { setLoading(false); }
   };
 
@@ -120,7 +110,6 @@ export default function AuthScreen() {
 
         <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ scale: scaleAnim }, { translateY: slideAnim }] }]}>
           
-          {/* Header */}
           <View style={styles.header}>
             <View style={[styles.logoBox, { backgroundColor: colors.primary }]}>
               <Ionicons name="checkmark" size={32} color="#FFFFFF" />
@@ -133,40 +122,25 @@ export default function AuthScreen() {
             </Text>
           </View>
 
-          {/* Banners */}
-          {!!successMsg && (
-            <View style={[styles.banner, { backgroundColor: colors.successBg }]}>
-              <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-              <Text style={[styles.bannerText, { color: colors.success }]}>{successMsg}</Text>
-            </View>
-          )}
-          {!!errorMsg && (
-            <View style={[styles.banner, { backgroundColor: colors.errorBg }]}>
-              <Ionicons name="alert-circle" size={18} color={colors.error} />
-              <Text style={[styles.bannerText, { color: colors.error }]}>{errorMsg}</Text>
-            </View>
-          )}
-
-          {/* Form */}
           <View style={styles.form}>
             {isSignUp && (
               <InputField
                 label="Nombre completo" icon="person-outline"
                 placeholder="Ej: María García" value={fullName}
-                onChangeText={(t) => { setFullName(t); clear(); }} autoCapitalize="words" editable={!loading}
+                onChangeText={setFullName} autoCapitalize="words" editable={!loading}
               />
             )}
 
             <InputField
               label="Correo electrónico" icon="mail-outline"
               placeholder="tucorreo@ejemplo.com" value={email}
-              onChangeText={(t) => { setEmail(t); clear(); }} keyboardType="email-address" editable={!loading}
+              onChangeText={setEmail} keyboardType="email-address" editable={!loading}
             />
 
             <InputField
               label="Contraseña" icon="lock-closed-outline"
               placeholder="Mínimo 6 caracteres" value={password}
-              onChangeText={(t) => { setPassword(t); clear(); }}
+              onChangeText={setPassword}
               secureTextEntry={!showPassword}
               rightIcon={showPassword ? 'eye-off-outline' : 'eye-outline'}
               onRightIconPress={() => setShowPassword(!showPassword)}
@@ -184,7 +158,6 @@ export default function AuthScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Footer toggle */}
           <TouchableOpacity onPress={toggleMode} disabled={loading} style={styles.toggleBtn}>
             <Text style={[styles.toggleText, { color: colors.textSecondary }]}>
               {isSignUp ? '¿Ya tienes cuenta? ' : '¿Primera vez? '}
@@ -212,8 +185,6 @@ const styles = StyleSheet.create({
   logoBox:   { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 5 },
   title:     { fontSize: 34, fontWeight: '800', letterSpacing: -0.8, marginBottom: 8 },
   subtitle:  { fontSize: 16, lineHeight: 22 },
-  banner:    { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, padding: 14, marginBottom: 24 },
-  bannerText:{ fontSize: 14, fontWeight: '600', flex: 1 },
   form:      { gap: 20 },
   fieldWrap: {},
   inputLabel:{ fontSize: 13, fontWeight: '700', marginBottom: 8, paddingLeft: 4 },

@@ -20,6 +20,7 @@ import TaskDetailScreen from '@/screens/TaskDetailScreen';
 import TaskSuccessScreen from '@/screens/TaskSuccessScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
 import ProgressScreen from '@/screens/ProgressScreen';
+import { ToastProvider } from '@/components/Toast';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -124,7 +125,9 @@ export default function App() {
   return (
     <SafeAreaProvider style={{ flex: 1 }}>
       <ThemeProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
