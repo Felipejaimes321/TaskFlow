@@ -34,13 +34,15 @@ function TaskCard({ item, onPress, onComplete, onDelete }: {
   const isDone    = item.status === 'completed';
   const percent   = totalSub > 0 ? Math.round((doneSub / totalSub) * 100) : 0;
 
-  const onPressIn  = () => Animated.spring(scaleAnim, { toValue: 0.975, useNativeDriver: true, tension: 300 }).start();
-  const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1,     useNativeDriver: true, tension: 300 }).start();
+  const bgColor = item.category && !isDone ? item.category.color + '0A' : colors.surface;
+
+  const onPressIn  = () => Animated.spring(scaleAnim, { toValue: 0.96, useNativeDriver: true, tension: 350 }).start();
+  const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1,     useNativeDriver: true, tension: 350 }).start();
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }], shadowColor: '#5B5B5B', shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.07, shadowRadius: 28, elevation: 3 }}>
       <TouchableOpacity
-        style={[styles.taskCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }, isDone && styles.taskCardDone]}
+        style={[styles.taskCard, { backgroundColor: bgColor }, isDone && styles.taskCardDone]}
         activeOpacity={1} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}
       >
         <View style={[styles.accentBar, { backgroundColor: isDone ? colors.textTertiary : priority.color }]} />
@@ -51,7 +53,7 @@ function TaskCard({ item, onPress, onComplete, onDelete }: {
                 {item.title}
               </Text>
               {!isDone && (
-                <View style={[styles.priorityBadge, { backgroundColor: priority.bg, borderColor: priority.border }]}>
+                <View style={[styles.priorityBadge, { backgroundColor: priority.bg }]}>
                   <Text style={[styles.priorityText, { color: priority.color }]}>{priority.label}</Text>
                 </View>
               )}
@@ -70,7 +72,7 @@ function TaskCard({ item, onPress, onComplete, onDelete }: {
               </View>
             )}
             {item.due_date && (
-              <View style={[styles.chip, { backgroundColor: colors.primaryLight, borderColor: colors.primaryBorder }]}>
+              <View style={[styles.chip, { backgroundColor: colors.primaryLight }]}>
                 <Ionicons name="calendar-outline" size={11} color={colors.primary} />
                 <Text style={[styles.chipText, { color: colors.primary }]}>{formatDate(item.due_date)}</Text>
               </View>
@@ -90,11 +92,11 @@ function TaskCard({ item, onPress, onComplete, onDelete }: {
         </View>
         <View style={styles.taskActions}>
           {!isDone && (
-            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.successBg, borderColor: colors.successBorder }]} onPress={onComplete}>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.successBg }]} onPress={onComplete}>
               <Ionicons name="checkmark" size={16} color={colors.success} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.errorBg, borderColor: colors.errorBorder }]} onPress={onDelete}>
+          <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.errorBg }]} onPress={onDelete}>
             <Ionicons name="trash-outline" size={15} color={colors.error} />
           </TouchableOpacity>
         </View>
@@ -222,19 +224,19 @@ export default function TasksScreen({ navigation }: any) {
         </View>
         <View style={styles.headerRight}>
           <View style={styles.statsRow}>
-            <View style={[styles.statChip, { backgroundColor: colors.primaryLight, borderColor: colors.primaryBorder }]}>
+            <View style={[styles.statChip, { backgroundColor: colors.primaryLight }]}>
               <Text style={[styles.statNum, { color: colors.primary }]}>{pending.length}</Text>
               <Text style={[styles.statLabel, { color: colors.primary }]}>pendientes</Text>
             </View>
             {highCount > 0 && (
-              <View style={[styles.statChip, { backgroundColor: colors.errorBg, borderColor: colors.errorBorder }]}>
+              <View style={[styles.statChip, { backgroundColor: colors.errorBg }]}>
                 <Text style={[styles.statNum, { color: colors.error }]}>{highCount}</Text>
                 <Text style={[styles.statLabel, { color: colors.error }]}>urgentes</Text>
               </View>
             )}
           </View>
           {/* View toggle */}
-          <View style={[styles.viewToggle, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+          <View style={[styles.viewToggle, { backgroundColor: colors.surfaceAlt }]}>
             <TouchableOpacity
               style={[styles.toggleBtn, viewMode === 'list' && { backgroundColor: colors.surface }]}
               onPress={() => handleSetViewMode('list')}
@@ -293,7 +295,6 @@ export default function TasksScreen({ navigation }: any) {
                   styles.filterTab,
                   {
                     backgroundColor: filter === f.key ? colors.primary : colors.surfaceAlt,
-                    borderColor: filter === f.key ? colors.primary : colors.border,
                   },
                 ]}
                 onPress={() => handleSetFilter(f.key)}
@@ -367,41 +368,41 @@ const styles = StyleSheet.create({
   title:         { fontSize: 27, fontWeight: '800', letterSpacing: -0.5, marginBottom: 8 },
   headerRight:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statsRow:      { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  statChip:      { borderRadius: 10, paddingHorizontal: 9, paddingVertical: 5, alignItems: 'center', borderWidth: 1 },
+  statChip:      { borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, alignItems: 'center' },
   statNum:       { fontSize: 17, fontWeight: '800' },
   statLabel:     { fontSize: 9, fontWeight: '600', textTransform: 'uppercase' },
-  viewToggle:    { flexDirection: 'row', borderRadius: 10, padding: 3, borderWidth: StyleSheet.hairlineWidth, gap: 2 },
-  toggleBtn:     { padding: 6, borderRadius: 8 },
+  viewToggle:    { flexDirection: 'row', borderRadius: 999, padding: 3, gap: 2 },
+  toggleBtn:     { padding: 8, borderRadius: 999 },
   filterRow:     { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 10, justifyContent: 'space-between' },
-  filterTab:     { flex: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  filterTab:     { flex: 1, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 999, justifyContent: 'center', alignItems: 'center' },
   filterText:    { fontSize: 13, fontWeight: '700', textAlign: 'center' },
-  listContent:   { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 100 },
+  listContent:   { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 100 },
   calendarContent:{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 100 },
-  taskCard:      { flexDirection: 'row', borderRadius: 20, marginBottom: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
+  taskCard:      { flexDirection: 'row', borderRadius: 32, marginBottom: 18, overflow: 'hidden' },
   taskCardDone:  { opacity: 0.5 },
-  accentBar:     { width: 4 },
-  taskContent:   { flex: 1, padding: 18 },
-  taskTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+  accentBar:     { width: 5 },
+  taskContent:   { flex: 1, padding: 20 },
+  taskTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   titleWrapper:  { flex: 1, flexDirection: 'row', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6, marginRight: 12 },
-  taskTitle:     { fontSize: 16, fontWeight: '700', lineHeight: 22 },
+  taskTitle:     { fontSize: 17, fontWeight: '800', lineHeight: 24, letterSpacing: -0.3 },
   taskTitleDone: { textDecorationLine: 'line-through' },
-  priorityBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, marginTop: 2 },
-  priorityText:  { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-  taskDesc:      { fontSize: 14, marginBottom: 12, lineHeight: 20 },
+  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginTop: 2 },
+  priorityText:  { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  taskDesc:      { fontSize: 14, marginBottom: 14, lineHeight: 22 },
   taskMeta:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
-  subtaskContainer:{ marginTop: 14, gap: 8 },
+  subtaskContainer:{ marginTop: 16, gap: 8 },
   subtaskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressTrack: { width: '100%', height: 6, borderRadius: 3, overflow: 'hidden' },
-  progressFill:  { height: '100%', borderRadius: 3 },
-  subtaskText:   { fontSize: 12, fontWeight: '600' },
-  chip:          { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  progressTrack: { width: '100%', height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: 4 },
+  subtaskText:   { fontSize: 12, fontWeight: '700' },
+  chip:          { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   chipText:      { fontSize: 11, fontWeight: '700' },
-  categoryBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  categoryBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
   categoryBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 0.5 },
-  taskActions:   { justifyContent: 'center', gap: 7, paddingRight: 11, paddingVertical: 11 },
-  actionBtn:     { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
+  taskActions:   { justifyContent: 'center', gap: 8, paddingRight: 16, paddingVertical: 16 },
+  actionBtn:     { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
   empty:         { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, paddingBottom: 80 },
-  emptyTitle:    { fontSize: 18, fontWeight: '700', marginTop: 14, textAlign: 'center' },
-  emptySubtitle: { fontSize: 14, marginTop: 6, textAlign: 'center', lineHeight: 20 },
-  fab:           { position: 'absolute', bottom: 28, right: 20, width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 8 },
+  emptyTitle:    { fontSize: 20, fontWeight: '800', marginTop: 16, textAlign: 'center', letterSpacing: -0.5 },
+  emptySubtitle: { fontSize: 15, marginTop: 8, textAlign: 'center', lineHeight: 22 },
+  fab:           { position: 'absolute', bottom: 32, right: 24, width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 8 },
 });

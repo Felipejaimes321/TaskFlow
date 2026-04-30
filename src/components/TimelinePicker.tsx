@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions, LayoutAnimation } from 'react-native';
 import { useTheme } from '@/context/themeContext';
 import { Task } from '@/types';
 
@@ -57,6 +57,11 @@ export default function TimelinePicker({ selectedDate, onSelectDate, tasks }: Ti
     }
   }, []);
 
+  const handlePress = (dateStr: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+    onSelectDate(dateStr);
+  };
+
   const renderItem = ({ item }: { item: Date }) => {
     const dateStr = item.toISOString().slice(0, 10);
     const isSelected = dateStr === selectedDate;
@@ -69,22 +74,22 @@ export default function TimelinePicker({ selectedDate, onSelectDate, tasks }: Ti
       <TouchableOpacity 
         style={[
           styles.dayItem, 
-          isSelected && { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-          isToday && !isSelected && { borderWidth: 2, borderColor: colors.primary, backgroundColor: colors.primary + '10' }
+          isSelected && { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+          isToday && !isSelected && { backgroundColor: colors.primary + '15' }
         ]}
-        onPress={() => onSelectDate(dateStr)}
-        activeOpacity={0.7}
+        onPress={() => handlePress(dateStr)}
+        activeOpacity={0.6}
       >
-        <Text style={[styles.dayName, { color: isSelected ? '#fff' : colors.textTertiary }]}>
+        <Text style={[styles.dayName, { color: isSelected ? '#FFFFFF' : colors.textTertiary }]}>
           {dayName}
         </Text>
-        <Text style={[styles.dayNum, { color: isSelected ? '#fff' : colors.text }]}>
+        <Text style={[styles.dayNum, { color: isSelected ? '#FFFFFF' : colors.text }]}>
           {dayNum}
         </Text>
         {/* Dot indicator */}
         <View style={[
           styles.dot, 
-          { backgroundColor: hasTasks ? (isSelected ? '#fff' : colors.primary) : 'transparent' }
+          { backgroundColor: hasTasks ? (isSelected ? '#FFFFFF' : colors.primary) : 'transparent' }
         ]} />
       </TouchableOpacity>
     );
@@ -111,7 +116,7 @@ export default function TimelinePicker({ selectedDate, onSelectDate, tasks }: Ti
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         renderItem={renderItem}
-        getItemLayout={(data, index) => ({ length: 70, offset: 70 * index, index })}
+        getItemLayout={(data, index) => ({ length: 80, offset: 80 * index, index })}
       />
     </View>
   );
@@ -141,27 +146,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   dayItem: {
-    width: 62,
-    height: 82,
+    width: 70,
+    height: 94,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 31,
-    marginHorizontal: 4,
+    borderRadius: 35,
+    marginHorizontal: 5,
   },
   dayName: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '800',
     marginBottom: 6,
     textTransform: 'uppercase',
   },
   dayNum: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '900',
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     marginTop: 6,
   }
 });
