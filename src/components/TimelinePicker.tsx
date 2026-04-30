@@ -69,8 +69,8 @@ export default function TimelinePicker({ selectedDate, onSelectDate, tasks }: Ti
       <TouchableOpacity 
         style={[
           styles.dayItem, 
-          isSelected && { backgroundColor: colors.primary },
-          isToday && !isSelected && { borderWidth: 1, borderColor: colors.primary }
+          isSelected && { backgroundColor: colors.primary, shadowColor: colors.primary, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+          isToday && !isSelected && { borderWidth: 2, borderColor: colors.primary, backgroundColor: colors.primary + '10' }
         ]}
         onPress={() => onSelectDate(dateStr)}
         activeOpacity={0.7}
@@ -111,7 +111,7 @@ export default function TimelinePicker({ selectedDate, onSelectDate, tasks }: Ti
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         renderItem={renderItem}
-        getItemLayout={(data, index) => ({ length: 60, offset: 60 * index, index })}
+        getItemLayout={(data, index) => ({ length: 70, offset: 70 * index, index })}
       />
     </View>
   );
@@ -141,26 +141,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   dayItem: {
-    width: 52,
-    height: 68,
+    width: 62,
+    height: 82,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 26,
+    borderRadius: 31,
     marginHorizontal: 4,
   },
   dayName: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
   dayNum: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
   },
   dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 6,
   }
 });

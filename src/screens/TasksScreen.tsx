@@ -7,9 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/context/authStore';
 import { useTaskStore } from '@/context/taskStore';
 import { useTheme } from '@/context/themeContext';
-import { Task } from '@/types';
+import { Task, Category } from '@/types';
 import TimelinePicker from '@/components/TimelinePicker';
 import TaskSkeleton from '@/components/TaskSkeleton';
+import CategoryFilter from '@/components/CategoryFilter';
+import RecurrenceIndicator from '@/components/RecurrenceIndicator';
 import { formatDate } from '@/utils/dateUtils';
 import { hapticImpact, hapticNotification } from '@/utils/haptics';
 
@@ -30,6 +32,7 @@ function TaskCard({ item, onPress, onComplete, onDelete }: {
   const totalSub  = (item.subtasks || []).length;
   const doneSub   = (item.subtasks || []).filter(s => s.completed).length;
   const isDone    = item.status === 'completed';
+  const percent   = totalSub > 0 ? Math.round((doneSub / totalSub) * 100) : 0;
 
   const onPressIn  = () => Animated.spring(scaleAnim, { toValue: 0.975, useNativeDriver: true, tension: 300 }).start();
   const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1,     useNativeDriver: true, tension: 300 }).start();
@@ -43,48 +46,47 @@ function TaskCard({ item, onPress, onComplete, onDelete }: {
         <View style={[styles.accentBar, { backgroundColor: isDone ? colors.textTertiary : priority.color }]} />
         <View style={styles.taskContent}>
           <View style={styles.taskTopRow}>
-            <Text style={[styles.taskTitle, { color: isDone ? colors.textTertiary : colors.text }, isDone && styles.taskTitleDone]} numberOfLines={2}>
-              {item.title}
-            </Text>
-            {!isDone && (
-              <View style={[styles.priorityBadge, { backgroundColor: priority.bg, borderColor: priority.border }]}>
-                <Text style={[styles.priorityText, { color: priority.color }]}>{priority.label}</Text>
-              </View>
+            <View style={styles.titleWrapper}>
+              <Text style={[styles.taskTitle, { color: isDone ? colors.textTertiary : colors.text }, isDone && styles.taskTitleDone]} numberOfLines={2}>
+                {item.title}
+              </Text>
+              {!isDone && (
+                <View style={[styles.priorityBadge, { backgroundColor: priority.bg, borderColor: priority.border }]}>
+                  <Text style={[styles.priorityText, { color: priority.color }]}>{priority.label}</Text>
+                </View>
+              )}
+            </View>
+            {item.recurrence && (
+              <RecurrenceIndicator recurrence={item.recurrence} />
             )}
           </View>
           {item.description ? (
             <Text style={[styles.taskDesc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
           ) : null}
           <View style={styles.taskMeta}>
-            {totalSub > 0 && (
-              <View style={styles.subtaskRow}>
-                <View style={[styles.progressTrack, { backgroundColor: colors.surfaceAlt }]}>
-                  <View style={[styles.progressFill, { width: `${(doneSub / totalSub) * 100}%` as any, backgroundColor: isDone ? colors.textTertiary : priority.color }]} />
-                </View>
-                <Text style={[styles.subtaskText, { color: colors.textSecondary }]}>{doneSub}/{totalSub}</Text>
+            {item.category && (
+              <View style={[styles.categoryBadge, { backgroundColor: item.category.color }]}>
+                <Text style={styles.categoryBadgeText}>{item.category.name}</Text>
               </View>
             )}
             {item.due_date && (
               <View style={[styles.chip, { backgroundColor: colors.primaryLight, borderColor: colors.primaryBorder }]}>
-                <Ionicons name="calendar-outline" size={10} color={colors.primary} />
+                <Ionicons name="calendar-outline" size={11} color={colors.primary} />
                 <Text style={[styles.chipText, { color: colors.primary }]}>{formatDate(item.due_date)}</Text>
               </View>
             )}
-            {item.recurrence && (
-              <View style={[styles.chip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                <Ionicons name="repeat-outline" size={10} color={colors.textSecondary} />
-                <Text style={[styles.chipText, { color: colors.textSecondary }]}>
-                  {item.recurrence === 'daily' ? 'Diaria' : item.recurrence === 'weekly' ? 'Semanal' : 'Mensual'}
-                </Text>
-              </View>
-            )}
-            {item.category && (
-              <View style={[styles.chip, { backgroundColor: item.category.color + '18', borderColor: item.category.color + '40' }]}>
-                <View style={[styles.categoryDot, { backgroundColor: item.category.color }]} />
-                <Text style={[styles.chipText, { color: item.category.color }]}>{item.category.name}</Text>
-              </View>
-            )}
           </View>
+          {totalSub > 0 && (
+            <View style={styles.subtaskContainer}>
+              <View style={styles.subtaskHeader}>
+                <Text style={[styles.subtaskText, { color: colors.textSecondary }]}>Subtareas</Text>
+                <Text style={[styles.subtaskText, { color: colors.text, fontWeight: '700' }]}>{doneSub}/{totalSub} ({percent}%)</Text>
+              </View>
+              <View style={[styles.progressTrack, { backgroundColor: colors.surfaceAlt }]}>
+                <View style={[styles.progressFill, { width: `${percent}%` as any, backgroundColor: isDone ? colors.textTertiary : colors.primary }]} />
+              </View>
+            </View>
+          )}
         </View>
         <View style={styles.taskActions}>
           {!isDone && (
@@ -106,11 +108,32 @@ type ViewMode  = 'list' | 'calendar';
 
 export default function TasksScreen({ navigation }: any) {
   const { user } = useAuthStore();
-  const { tasks, loading, fetchTasks, deleteTask, completeTask } = useTaskStore();
+  const { tasks, loading, fetchTasks, deleteTask, completeTask, categories } = useTaskStore();
   const { colors, isDark } = useTheme();
   const [filter,   setFilter]   = useState<FilterType>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
+
+  const handleSetFilter = (newFilter: FilterType) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setFilter(newFilter);
+  };
+
+  const handleSetViewMode = (mode: ViewMode) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setViewMode(mode);
+  };
+
+  const handleSetSelectedCategory = (cat: string | null) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSelectedCategory(cat);
+  };
+
+  const handleSetSelectedDate = (date: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSelectedDate(date);
+  };
 
   useEffect(() => {
     if (user?.id) {
@@ -147,7 +170,15 @@ export default function TasksScreen({ navigation }: any) {
 
   const pending   = tasks.filter(t => t.status === 'pending');
   const completed = tasks.filter(t => t.status === 'completed');
-  const displayed = filter === 'pending' ? pending : filter === 'completed' ? completed : tasks;
+
+  // Apply status filter
+  let displayed = filter === 'pending' ? pending : filter === 'completed' ? completed : tasks;
+
+  // Apply category filter if selected
+  if (selectedCategory) {
+    displayed = displayed.filter(t => t.category_id === selectedCategory);
+  }
+
   const highCount = pending.filter(t => t.priority === 'high').length;
 
   const filters: { key: FilterType; label: string }[] = [
@@ -206,13 +237,13 @@ export default function TasksScreen({ navigation }: any) {
           <View style={[styles.viewToggle, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             <TouchableOpacity
               style={[styles.toggleBtn, viewMode === 'list' && { backgroundColor: colors.surface }]}
-              onPress={() => setViewMode('list')}
+              onPress={() => handleSetViewMode('list')}
             >
               <Ionicons name="list" size={16} color={viewMode === 'list' ? colors.primary : colors.icon} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.toggleBtn, viewMode === 'calendar' && { backgroundColor: colors.surface }]}
-              onPress={() => setViewMode('calendar')}
+              onPress={() => handleSetViewMode('calendar')}
             >
               <Ionicons name="calendar" size={16} color={viewMode === 'calendar' ? colors.primary : colors.icon} />
             </TouchableOpacity>
@@ -225,7 +256,7 @@ export default function TasksScreen({ navigation }: any) {
         <View style={{ flex: 1, paddingTop: 14 }}>
           <TimelinePicker 
             selectedDate={selectedDate} 
-            onSelectDate={setSelectedDate} 
+            onSelectDate={handleSetSelectedDate} 
             tasks={tasks} 
           />
           <FlatList
@@ -253,20 +284,43 @@ export default function TasksScreen({ navigation }: any) {
       ) : (
         // ── List View ──
         <>
-          {/* Filters */}
+          {/* Status Filters */}
           <View style={styles.filterRow}>
             {filters.map(f => (
               <TouchableOpacity
                 key={f.key}
-                style={[styles.filterTab, { borderColor: colors.border }, filter === f.key && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-                onPress={() => setFilter(f.key)}
+                style={[
+                  styles.filterTab,
+                  {
+                    backgroundColor: filter === f.key ? colors.primary : colors.surfaceAlt,
+                    borderColor: filter === f.key ? colors.primary : colors.border,
+                  },
+                ]}
+                onPress={() => handleSetFilter(f.key)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.filterText, { color: colors.textSecondary }, filter === f.key && { color: '#FFFFFF' }]}>
+                <Text
+                  style={[
+                    styles.filterText,
+                    {
+                      color: filter === f.key ? '#FFFFFF' : colors.textSecondary,
+                    },
+                  ]}
+                >
                   {f.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Category Filter Dropdown */}
+          {categories && categories.length > 0 && (
+            <CategoryFilter
+              categories={categories}
+              selectedCategoryId={selectedCategory}
+              onSelectCategory={handleSetSelectedCategory}
+            />
+          )}
 
           {displayed.length === 0 ? (
             <View style={styles.empty}>
@@ -318,29 +372,32 @@ const styles = StyleSheet.create({
   statLabel:     { fontSize: 9, fontWeight: '600', textTransform: 'uppercase' },
   viewToggle:    { flexDirection: 'row', borderRadius: 10, padding: 3, borderWidth: StyleSheet.hairlineWidth, gap: 2 },
   toggleBtn:     { padding: 6, borderRadius: 8 },
-  filterRow:     { flexDirection: 'row', paddingHorizontal: 16, gap: 8, paddingTop: 12, paddingBottom: 6 },
-  filterTab:     { paddingHorizontal: 11, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
-  filterText:    { fontSize: 12, fontWeight: '600' },
+  filterRow:     { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 10, justifyContent: 'space-between' },
+  filterTab:     { flex: 1, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  filterText:    { fontSize: 13, fontWeight: '700', textAlign: 'center' },
   listContent:   { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 100 },
   calendarContent:{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 100 },
-  taskCard:      { flexDirection: 'row', borderRadius: 16, marginBottom: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  taskCard:      { flexDirection: 'row', borderRadius: 20, marginBottom: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
   taskCardDone:  { opacity: 0.5 },
   accentBar:     { width: 4 },
-  taskContent:   { flex: 1, padding: 13 },
-  taskTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 5 },
-  taskTitle:     { fontSize: 15, fontWeight: '700', flex: 1, marginRight: 8, lineHeight: 20 },
+  taskContent:   { flex: 1, padding: 18 },
+  taskTopRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+  titleWrapper:  { flex: 1, flexDirection: 'row', alignItems: 'flex-start', flexWrap: 'wrap', gap: 6, marginRight: 12 },
+  taskTitle:     { fontSize: 16, fontWeight: '700', lineHeight: 22 },
   taskTitleDone: { textDecorationLine: 'line-through' },
-  priorityBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
-  priorityText:  { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
-  taskDesc:      { fontSize: 13, marginBottom: 9, lineHeight: 18 },
-  taskMeta:      { flexDirection: 'row', flexWrap: 'wrap', gap: 7, alignItems: 'center' },
-  subtaskRow:    { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  progressTrack: { width: 52, height: 3, borderRadius: 2, overflow: 'hidden' },
-  progressFill:  { height: '100%', borderRadius: 2 },
-  subtaskText:   { fontSize: 11, fontWeight: '600' },
-  chip:          { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
-  chipText:      { fontSize: 11, fontWeight: '600' },
-  categoryDot:   { width: 6, height: 6, borderRadius: 3 },
+  priorityBadge: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6, borderWidth: 1, marginTop: 2 },
+  priorityText:  { fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  taskDesc:      { fontSize: 14, marginBottom: 12, lineHeight: 20 },
+  taskMeta:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  subtaskContainer:{ marginTop: 14, gap: 8 },
+  subtaskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  progressTrack: { width: '100%', height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: 3 },
+  subtaskText:   { fontSize: 12, fontWeight: '600' },
+  chip:          { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  chipText:      { fontSize: 11, fontWeight: '700' },
+  categoryBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  categoryBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', textTransform: 'uppercase', letterSpacing: 0.5 },
   taskActions:   { justifyContent: 'center', gap: 7, paddingRight: 11, paddingVertical: 11 },
   actionBtn:     { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1 },
   empty:         { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, paddingBottom: 80 },

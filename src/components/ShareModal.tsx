@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, TextInput, TouchableOpacity,
-  ActivityIndicator, ScrollView, Platform, FlatList,
+  ActivityIndicator, ScrollView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/themeContext';
-import { useTaskStore } from '@/context/taskStore';
 import { useToast } from '@/components/Toast';
-import { User } from '@/types';
 import { hapticImpact } from '@/utils/haptics';
 
 interface ShareModalProps {
@@ -22,64 +20,29 @@ export default function ShareModal({
   visible, onClose, taskTitle, subtaskTitle, onShare,
 }: ShareModalProps) {
   const { colors, isDark } = useTheme();
-  const { findUserByEmail } = useTaskStore();
   const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<User[]>([]);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  // Debounce email search
-  useEffect(() => {
+  const handleShare = async () => {
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email.trim()) {
-      setSuggestions([]);
+      showToast({ message: 'Ingresa un email', type: 'error' });
       return;
     }
 
-    const timer = setTimeout(() => {
-      searchUser(email.trim());
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [email]);
-
-  const searchUser = async (emailToSearch: string) => {
-    setSearchLoading(true);
-    try {
-      const user = await findUserByEmail(emailToSearch);
-      if (user) {
-        setSuggestions([user]);
-      } else {
-        setSuggestions([]);
-      }
-    } catch (error) {
-      setSuggestions([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  const handleSelectUser = (user: User) => {
-    setSelectedUser(user);
-    setEmail(user.email);
-    setSuggestions([]);
-    hapticImpact('light');
-  };
-
-  const handleShare = async () => {
-    if (!selectedUser) {
-      showToast({ message: 'Selecciona un usuario', type: 'error' });
+    if (!emailRegex.test(email.trim())) {
+      showToast({ message: 'Email inválido', type: 'error' });
       return;
     }
 
     setLoading(true);
     try {
-      await onShare(selectedUser.email);
+      await onShare(email.toLowerCase().trim());
       showToast({
-        message: `${subtaskTitle ? 'Subtarea' : 'Tarea'} compartida con ${selectedUser.full_name}`,
+        message: `${subtaskTitle ? 'Subtarea' : 'Tarea'} compartida con ${email}`,
         type: 'success',
       });
       hapticImpact('medium');
@@ -98,9 +61,6 @@ export default function ShareModal({
 
   const resetForm = () => {
     setEmail('');
-    setMessage('');
-    setSelectedUser(null);
-    setSuggestions([]);
   };
 
   const title = subtaskTitle
@@ -108,6 +68,7 @@ export default function ShareModal({
     : `Compartir tarea: "${taskTitle}"`;
 
   const webPointer = Platform.OS === 'web' ? { cursor: 'pointer' } : {};
+  const isValidEmail = email.trim().length > 0 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   return (
     <Modal
@@ -144,15 +105,34 @@ export default function ShareModal({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.content}
           >
+            {/* Info */}
+            <View style={styles.section}>
+              <View
+                style={[
+                  styles.infoBox,
+                  { backgroundColor: colors.primaryLight, borderColor: colors.primaryBorder },
+                ]}
+              >
+                <Ionicons name="information-circle" size={20} color={colors.primary} />
+                <Text style={[styles.infoText, { color: colors.primary }]}>
+                  Puedes compartir con cualquier email. Se enviará una invitación automática.
+                </Text>
+              </View>
+            </View>
+
             {/* Email Input */}
             <View style={styles.section}>
               <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Email del usuario
+                Email del destinatario
               </Text>
               <View
                 style={[
                   styles.inputBox,
-                  { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                  {
+                    backgroundColor: colors.surfaceAlt,
+                    borderColor: isValidEmail ? colors.primary : colors.border,
+                    borderWidth: 1.5,
+                  },
                 ]}
               >
                 <Ionicons
@@ -176,122 +156,18 @@ export default function ShareModal({
                   editable={!loading}
                   autoCorrect={false}
                 />
-                {searchLoading && <ActivityIndicator size="small" color={colors.primary} />}
+                {isValidEmail && (
+                  <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                )}
               </View>
             </View>
 
-            {/* Suggestions */}
-            {suggestions.length > 0 && selectedUser === null && (
-              <View style={styles.section}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>
-                  Usuarios encontrados
-                </Text>
-                <FlatList
-                  data={suggestions}
-                  keyExtractor={(item) => item.id}
-                  scrollEnabled={false}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.suggestionItem,
-                        {
-                          backgroundColor: colors.surface,
-                          borderColor: colors.borderSubtle,
-                        },
-                      ]}
-                      onPress={() => handleSelectUser(item)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.suggestionContent}>
-                        <Text style={[styles.suggestionName, { color: colors.text }]}>
-                          {item.full_name}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.suggestionEmail,
-                            { color: colors.textSecondary },
-                          ]}
-                        >
-                          {item.email}
-                        </Text>
-                      </View>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={20}
-                        color={colors.primary}
-                      />
-                    </TouchableOpacity>
-                  )}
-                />
-              </View>
-            )}
-
-            {/* Selected User */}
-            {selectedUser && (
-              <View style={styles.section}>
-                <View
-                  style={[
-                    styles.selectedUserCard,
-                    { backgroundColor: colors.primaryLight, borderColor: colors.primaryBorder },
-                  ]}
-                >
-                  <View style={styles.selectedUserContent}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color={colors.primary}
-                    />
-                    <View style={{ marginLeft: 12, flex: 1 }}>
-                      <Text style={[styles.selectedUserName, { color: colors.primary }]}>
-                        {selectedUser.full_name}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.selectedUserEmail,
-                          { color: colors.primary, opacity: 0.8 },
-                        ]}
-                      >
-                        {selectedUser.email}
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => setSelectedUser(null)}
-                    disabled={loading}
-                    style={webPointer}
-                  >
-                    <Ionicons name="close-circle" size={24} color={colors.primary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-
-            {/* Message (Optional) */}
+            {/* Help text */}
             <View style={styles.section}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>
-                Mensaje (opcional)
+              <Text style={[styles.helpText, { color: colors.textSecondary }]}>
+                Si la persona no tiene cuenta en TaskFlow, la invitación se le enviará por correo.
+                Cuando se registre, verá la tarea automáticamente.
               </Text>
-              <View
-                style={[
-                  styles.inputBox,
-                  { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                ]}
-              >
-                <TextInput
-                  style={[
-                    styles.messageInput,
-                    { color: colors.text },
-                    Platform.OS === 'web' && { outlineStyle: 'none' } as any,
-                  ]}
-                  placeholder="Ej: Por favor revisa esto cuando puedas"
-                  placeholderTextColor={colors.placeholder}
-                  value={message}
-                  onChangeText={setMessage}
-                  multiline
-                  editable={!loading}
-                  numberOfLines={3}
-                />
-              </View>
             </View>
           </ScrollView>
 
@@ -321,19 +197,19 @@ export default function ShareModal({
                 styles.shareBtn,
                 {
                   backgroundColor: colors.primary,
-                  opacity: selectedUser && !loading ? 1 : 0.5,
+                  opacity: isValidEmail && !loading ? 1 : 0.5,
                 },
               ]}
               onPress={handleShare}
-              disabled={!selectedUser || loading}
+              disabled={!isValidEmail || loading}
               activeOpacity={0.8}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
               ) : (
                 <>
-                  <Ionicons name="share-social" size={18} color="#FFFFFF" />
-                  <Text style={styles.shareBtnText}>Compartir</Text>
+                  <Ionicons name="send" size={18} color="#FFFFFF" />
+                  <Text style={styles.shareBtnText}>Enviar</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -350,7 +226,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    maxHeight: '90%',
+    maxHeight: '80%',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
@@ -375,6 +251,20 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 20,
   },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 10,
+  },
+  infoText: {
+    fontSize: 13,
+    fontWeight: '500',
+    flex: 1,
+    lineHeight: 18,
+  },
   label: {
     fontSize: 12,
     fontWeight: '700',
@@ -387,7 +277,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 48,
-    borderWidth: 1,
   },
   inputIcon: {
     marginRight: 8,
@@ -397,56 +286,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  messageInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '400',
-    paddingVertical: 12,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  suggestionContent: {
-    flex: 1,
-  },
-  suggestionName: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  suggestionEmail: {
+  helpText: {
     fontSize: 12,
-    fontWeight: '400',
-  },
-  selectedUserCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-  },
-  selectedUserContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  selectedUserName: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  selectedUserEmail: {
-    fontSize: 12,
-    fontWeight: '400',
+    lineHeight: 18,
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',

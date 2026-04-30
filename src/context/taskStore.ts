@@ -350,20 +350,30 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   shareTask: async (taskId, recipientEmail) => {
     set({ loading: true, error: null });
     try {
-      // Buscar usuario receptor
-      const recipient = await get().findUserByEmail(recipientEmail);
-      if (!recipient) throw new Error('Usuario no encontrado');
-
       const { data: authUser } = await supabase.auth.getUser();
       if (!authUser.user) throw new Error('No autenticado');
 
-      // Crear assignment
+      // Obtener datos de la tarea
+      const task = get().tasks.find(t => t.id === taskId);
+      if (!task) throw new Error('Tarea no encontrada');
+
+      // Buscar usuario receptor (opcional - puede no existir)
+      let recipientId: string | null = null;
+      try {
+        const recipient = await get().findUserByEmail(recipientEmail);
+        if (recipient) recipientId = recipient.id;
+      } catch (error) {
+        // Usuario no existe, continuar con email-based sharing
+      }
+
+      // Crear assignment con email (usuario puede no existir aún)
       const { data, error } = await supabase
         .from('task_assignments')
         .insert([{
           task_id: taskId,
           shared_by_id: authUser.user.id,
-          shared_to_id: recipient.id,
+          shared_to_id: recipientId,
+          shared_to_email: recipientEmail.toLowerCase(),
           status: 'pending',
         }])
         .select()
@@ -372,6 +382,23 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (error) {
         if (error.code === '23505') throw new Error('Ya compartida con este usuario');
         throw error;
+      }
+
+      // Enviar email de invitación
+      try {
+        const senderName = authUser.user.user_metadata?.full_name || 'Un usuario';
+        await supabase.functions.invoke('send-task-invitation', {
+          body: {
+            recipientEmail: recipientEmail.toLowerCase(),
+            senderName,
+            taskTitle: task.title,
+            taskId,
+            type: 'task',
+          },
+        });
+      } catch (emailError) {
+        console.warn('Email sending failed (non-blocking):', emailError);
+        // No lanzar error - el assignment ya se creó
       }
 
       // Agregar a tareas para ver cambios en tiempo real
@@ -394,20 +421,41 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   shareSubtask: async (subtaskId, recipientEmail) => {
     set({ loading: true, error: null });
     try {
-      // Buscar usuario receptor
-      const recipient = await get().findUserByEmail(recipientEmail);
-      if (!recipient) throw new Error('Usuario no encontrado');
-
       const { data: authUser } = await supabase.auth.getUser();
       if (!authUser.user) throw new Error('No autenticado');
 
-      // Crear assignment
+      // Encontrar subtarea y tarea padre
+      let subtask: Subtask | undefined;
+      let parentTask: Task | undefined;
+
+      for (const task of get().tasks) {
+        const found = task.subtasks?.find(s => s.id === subtaskId);
+        if (found) {
+          subtask = found;
+          parentTask = task;
+          break;
+        }
+      }
+
+      if (!subtask || !parentTask) throw new Error('Subtarea no encontrada');
+
+      // Buscar usuario receptor (opcional - puede no existir)
+      let recipientId: string | null = null;
+      try {
+        const recipient = await get().findUserByEmail(recipientEmail);
+        if (recipient) recipientId = recipient.id;
+      } catch (error) {
+        // Usuario no existe, continuar con email-based sharing
+      }
+
+      // Crear assignment con email (usuario puede no existir aún)
       const { data, error } = await supabase
         .from('subtask_assignments')
         .insert([{
           subtask_id: subtaskId,
           shared_by_id: authUser.user.id,
-          shared_to_id: recipient.id,
+          shared_to_id: recipientId,
+          shared_to_email: recipientEmail.toLowerCase(),
           status: 'pending',
         }])
         .select()
@@ -416,6 +464,24 @@ export const useTaskStore = create<TaskState>((set, get) => ({
       if (error) {
         if (error.code === '23505') throw new Error('Ya compartida con este usuario');
         throw error;
+      }
+
+      // Enviar email de invitación
+      try {
+        const senderName = authUser.user.user_metadata?.full_name || 'Un usuario';
+        await supabase.functions.invoke('send-task-invitation', {
+          body: {
+            recipientEmail: recipientEmail.toLowerCase(),
+            senderName,
+            taskTitle: subtask.title,
+            parentTaskTitle: parentTask.title,
+            taskId: parentTask.id,
+            type: 'subtask',
+          },
+        });
+      } catch (emailError) {
+        console.warn('Email sending failed (non-blocking):', emailError);
+        // No lanzar error - el assignment ya se creó
       }
     } catch (error: any) {
       set({ error: error.message });
@@ -485,6 +551,10 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   fetchPendingAssignments: async (userId) => {
     set({ loading: true, error: null });
     try {
+      const { data: authUser } = await supabase.auth.getUser();
+      const userEmail = authUser.user?.email?.toLowerCase();
+
+      // Fetch task assignments (by userId or email)
       const { data: taskAssignments, error: taskError } = await supabase
         .from('task_assignments')
         .select(`
@@ -492,10 +562,11 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           task:tasks (id, title, description, creator_id),
           shared_by:users!task_assignments_shared_by_id_fkey (id, full_name, email)
         `)
-        .eq('shared_to_id', userId)
+        .or(`shared_to_id.eq.${userId},shared_to_email.eq.${userEmail}`)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
+      // Fetch subtask assignments (by userId or email)
       const { data: subtaskAssignments, error: subtaskError } = await supabase
         .from('subtask_assignments')
         .select(`
@@ -503,7 +574,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
           subtask:subtasks (id, title, task_id),
           shared_by:users!subtask_assignments_shared_by_id_fkey (id, full_name, email)
         `)
-        .eq('shared_to_id', userId)
+        .or(`shared_to_id.eq.${userId},shared_to_email.eq.${userEmail}`)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
